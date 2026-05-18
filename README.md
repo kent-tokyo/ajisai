@@ -4,6 +4,8 @@ A lightweight, blazing-fast ETL engine compatible with Apache Hop, rewritten in 
 
 > Keeps the power of Apache Hop's data transformation capabilities while eliminating the complexity.
 
+English | [日本語](README_ja.md) | [中文](README_zh.md)
+
 ---
 
 ## Features

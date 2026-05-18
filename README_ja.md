@@ -4,6 +4,8 @@ Apache Hop 互換の超軽量・爆速 ETL エンジン。Rust で再構築。
 
 > Apache Hop の強力なデータ変換機能を維持しつつ、煩雑な UI をシンプルに。
 
+[English](README.md) | 日本語 | [中文](README_zh.md)
+
 ---
 
 ## 特徴
