@@ -17,13 +17,13 @@ pub enum ValueType {
 impl fmt::Display for ValueType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ValueType::String    => write!(f, "String"),
-            ValueType::Integer   => write!(f, "Integer"),
-            ValueType::Float     => write!(f, "Float"),
-            ValueType::Boolean   => write!(f, "Boolean"),
-            ValueType::Date      => write!(f, "Date"),
+            ValueType::String => write!(f, "String"),
+            ValueType::Integer => write!(f, "Integer"),
+            ValueType::Float => write!(f, "Float"),
+            ValueType::Boolean => write!(f, "Boolean"),
+            ValueType::Date => write!(f, "Date"),
             ValueType::Timestamp => write!(f, "Timestamp"),
-            ValueType::Bytes     => write!(f, "Bytes"),
+            ValueType::Bytes => write!(f, "Bytes"),
         }
     }
 }
@@ -46,14 +46,14 @@ pub enum Value {
 impl Value {
     pub fn value_type(&self) -> Option<ValueType> {
         match self {
-            Value::Str(_)       => Some(ValueType::String),
-            Value::Int(_)       => Some(ValueType::Integer),
-            Value::Float(_)     => Some(ValueType::Float),
-            Value::Bool(_)      => Some(ValueType::Boolean),
-            Value::Date(_)      => Some(ValueType::Date),
+            Value::Str(_) => Some(ValueType::String),
+            Value::Int(_) => Some(ValueType::Integer),
+            Value::Float(_) => Some(ValueType::Float),
+            Value::Bool(_) => Some(ValueType::Boolean),
+            Value::Date(_) => Some(ValueType::Date),
             Value::Timestamp(_) => Some(ValueType::Timestamp),
-            Value::Bytes(_)     => Some(ValueType::Bytes),
-            Value::Null         => None,
+            Value::Bytes(_) => Some(ValueType::Bytes),
+            Value::Null => None,
         }
     }
 
@@ -62,36 +62,48 @@ impl Value {
     }
 
     pub fn as_str(&self) -> Option<&str> {
-        if let Value::Str(s) = self { Some(s) } else { None }
+        if let Value::Str(s) = self {
+            Some(s)
+        } else {
+            None
+        }
     }
 
     pub fn as_int(&self) -> Option<i64> {
-        if let Value::Int(n) = self { Some(*n) } else { None }
+        if let Value::Int(n) = self {
+            Some(*n)
+        } else {
+            None
+        }
     }
 
     pub fn as_float(&self) -> Option<f64> {
         match self {
             Value::Float(f) => Some(*f),
-            Value::Int(n)   => Some(*n as f64),
-            _               => None,
+            Value::Int(n) => Some(*n as f64),
+            _ => None,
         }
     }
 
     pub fn as_bool(&self) -> Option<bool> {
-        if let Value::Bool(b) = self { Some(*b) } else { None }
+        if let Value::Bool(b) = self {
+            Some(*b)
+        } else {
+            None
+        }
     }
 
     /// Coerce value to string representation
     pub fn to_display_string(&self) -> String {
         match self {
-            Value::Str(s)       => s.clone(),
-            Value::Int(n)       => n.to_string(),
-            Value::Float(f)     => f.to_string(),
-            Value::Bool(b)      => b.to_string(),
-            Value::Date(d)      => d.to_string(),
+            Value::Str(s) => s.clone(),
+            Value::Int(n) => n.to_string(),
+            Value::Float(f) => f.to_string(),
+            Value::Bool(b) => b.to_string(),
+            Value::Date(d) => d.to_string(),
             Value::Timestamp(t) => t.to_string(),
-            Value::Bytes(b)     => format!("<{} bytes>", b.len()),
-            Value::Null         => String::from(""),
+            Value::Bytes(b) => format!("<{} bytes>", b.len()),
+            Value::Null => String::from(""),
         }
     }
 }
@@ -103,31 +115,41 @@ impl fmt::Display for Value {
 }
 
 impl From<String> for Value {
-    fn from(s: String) -> Self { Value::Str(s) }
+    fn from(s: String) -> Self {
+        Value::Str(s)
+    }
 }
 impl From<&str> for Value {
-    fn from(s: &str) -> Self { Value::Str(s.to_owned()) }
+    fn from(s: &str) -> Self {
+        Value::Str(s.to_owned())
+    }
 }
 impl From<i64> for Value {
-    fn from(n: i64) -> Self { Value::Int(n) }
+    fn from(n: i64) -> Self {
+        Value::Int(n)
+    }
 }
 impl From<f64> for Value {
-    fn from(f: f64) -> Self { Value::Float(f) }
+    fn from(f: f64) -> Self {
+        Value::Float(f)
+    }
 }
 impl From<bool> for Value {
-    fn from(b: bool) -> Self { Value::Bool(b) }
+    fn from(b: bool) -> Self {
+        Value::Bool(b)
+    }
 }
 
 /// Definition of a single column
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Field {
-    pub name:       String,
+    pub name: String,
     pub value_type: ValueType,
-    pub nullable:   bool,
+    pub nullable: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub length:     Option<usize>,
+    pub length: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub precision:  Option<usize>,
+    pub precision: Option<usize>,
 }
 
 impl Field {
@@ -217,14 +239,14 @@ mod tests {
     fn row_get_set() {
         let schema = Arc::new(RowSchema::new(vec![
             Field::new("name", ValueType::String),
-            Field::new("age",  ValueType::Integer),
+            Field::new("age", ValueType::Integer),
         ]));
         let mut row = Row::empty(schema);
         row.set("name", Value::Str("Alice".into()));
-        row.set("age",  Value::Int(30));
+        row.set("age", Value::Int(30));
 
         assert_eq!(row.get("name"), Some(&Value::Str("Alice".into())));
-        assert_eq!(row.get("age"),  Some(&Value::Int(30)));
+        assert_eq!(row.get("age"), Some(&Value::Int(30)));
         assert_eq!(row.get("missing"), None);
     }
 }

@@ -12,14 +12,14 @@ const CHANNEL_BUFFER: usize = 1024;
 
 #[derive(Debug, Default)]
 pub struct ExecutionStats {
-    pub rows_read:    u64,
+    pub rows_read: u64,
     pub rows_written: u64,
-    pub elapsed_ms:   u64,
+    pub elapsed_ms: u64,
 }
 
 pub struct PipelineEngine {
     pub pipeline: Pipeline,
-    pub context:  ExecutionContext,
+    pub context: ExecutionContext,
 }
 
 impl PipelineEngine {
@@ -47,10 +47,14 @@ impl PipelineEngine {
             return Err(AjisaiError::Pipeline("Pipeline has no nodes".into()));
         }
 
-        info!("Running pipeline '{}' ({} nodes)", self.pipeline.name, order.len());
+        info!(
+            "Running pipeline '{}' ({} nodes)",
+            self.pipeline.name,
+            order.len()
+        );
 
         // Build channels: one sender/receiver pair per directed hop edge.
-        let mut senders:   HashMap<(String, String), mpsc::Sender<Row>>   = HashMap::new();
+        let mut senders: HashMap<(String, String), mpsc::Sender<Row>> = HashMap::new();
         let mut receivers: HashMap<(String, String), mpsc::Receiver<Row>> = HashMap::new();
 
         for hop in &self.pipeline.hops {
@@ -84,8 +88,8 @@ impl PipelineEngine {
                 .filter_map(|h| receivers.remove(&(h.from.clone(), h.to.clone())))
                 .collect();
 
-            let is_source     = node.transform.is_source();
-            let side_count    = node.transform.side_input_count();
+            let is_source = node.transform.is_source();
+            let side_count = node.transform.side_input_count();
 
             let handle = tokio::spawn(async move {
                 node.transform.open(&ctx).await?;
@@ -105,7 +109,10 @@ impl PipelineEngine {
                         }
                     };
 
-                    tokio::try_join!(produce_fut, async { fan_out.await; Ok(()) })?;
+                    tokio::try_join!(produce_fut, async {
+                        fan_out.await;
+                        Ok(())
+                    })?;
                 } else {
                     // Split side inputs from main inputs.
                     // Side inputs are the *last* `side_count` receivers.
@@ -165,16 +172,22 @@ impl PipelineEngine {
                     return Err(e);
                 }
                 Err(join_err) => {
-                    return Err(AjisaiError::Pipeline(format!("Task panicked: {}", join_err)));
+                    return Err(AjisaiError::Pipeline(format!(
+                        "Task panicked: {}",
+                        join_err
+                    )));
                 }
             }
         }
 
         let elapsed_ms = start.elapsed().as_millis() as u64;
-        info!("Pipeline '{}' completed in {}ms ({} nodes)", self.pipeline.name, elapsed_ms, rows_processed);
+        info!(
+            "Pipeline '{}' completed in {}ms ({} nodes)",
+            self.pipeline.name, elapsed_ms, rows_processed
+        );
 
         Ok(ExecutionStats {
-            rows_read:    0,
+            rows_read: 0,
             rows_written: 0,
             elapsed_ms,
         })

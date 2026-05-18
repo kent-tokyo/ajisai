@@ -15,10 +15,22 @@ pub async fn run_workflow(workflow_path: PathBuf, env_vars: Vec<String>) -> anyh
     }
 
     if !workflow_path.exists() {
-        anyhow::bail!("{}", t!("error.file_not_found", path = workflow_path.display().to_string().as_str()));
+        anyhow::bail!(
+            "{}",
+            t!(
+                "error.file_not_found",
+                path = workflow_path.display().to_string().as_str()
+            )
+        );
     }
     if workflow_path.extension().and_then(|e| e.to_str()) != Some("hwf") {
-        anyhow::bail!("{}", t!("error.unsupported_format", path = workflow_path.display().to_string().as_str()));
+        anyhow::bail!(
+            "{}",
+            t!(
+                "error.unsupported_format",
+                path = workflow_path.display().to_string().as_str()
+            )
+        );
     }
 
     let hop_workflow = load_workflow_file(&workflow_path)?;
@@ -32,7 +44,14 @@ pub async fn run_workflow(workflow_path: PathBuf, env_vars: Vec<String>) -> anyh
     let engine = WorkflowEngine::new(workflow, ctx);
     match engine.run().await {
         Ok(stats) => {
-            println!("{}", t!("workflow.success", name = name.as_str(), ms = stats.elapsed_ms.to_string().as_str()));
+            println!(
+                "{}",
+                t!(
+                    "workflow.success",
+                    name = name.as_str(),
+                    ms = stats.elapsed_ms.to_string().as_str()
+                )
+            );
             if stats.failed_actions > 0 {
                 anyhow::bail!("{} action(s) failed", stats.failed_actions);
             }

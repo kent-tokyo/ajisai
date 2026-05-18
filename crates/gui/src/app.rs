@@ -8,21 +8,21 @@ use rust_i18n::t;
 use std::sync::mpsc;
 
 pub struct AjisaiApp {
-    pipeline:      PipelineState,
-    ui:            UiState,
+    pipeline: PipelineState,
+    ui: UiState,
     canvas_offset: Vec2,
-    canvas_zoom:   f32,
-    run_rx:        Option<mpsc::Receiver<String>>,
+    canvas_zoom: f32,
+    run_rx: Option<mpsc::Receiver<String>>,
 }
 
 impl Default for AjisaiApp {
     fn default() -> Self {
         Self {
-            pipeline:      PipelineState::new("Untitled Pipeline"),
-            ui:            UiState::default(),
+            pipeline: PipelineState::new("Untitled Pipeline"),
+            ui: UiState::default(),
             canvas_offset: Vec2::new(40.0, 40.0),
-            canvas_zoom:   1.0,
-            run_rx:        None,
+            canvas_zoom: 1.0,
+            run_rx: None,
         }
     }
 }
@@ -37,10 +37,16 @@ impl AjisaiApp {
             let mut finished = false;
             loop {
                 match rx.try_recv() {
-                    Ok(msg) if msg == "__DONE__" => { finished = true; break; }
+                    Ok(msg) if msg == "__DONE__" => {
+                        finished = true;
+                        break;
+                    }
                     Ok(msg) => self.ui.log(msg),
                     Err(mpsc::TryRecvError::Empty) => break,
-                    Err(mpsc::TryRecvError::Disconnected) => { finished = true; break; }
+                    Err(mpsc::TryRecvError::Disconnected) => {
+                        finished = true;
+                        break;
+                    }
                 }
             }
             finished
@@ -80,7 +86,10 @@ impl AjisaiApp {
 
                 ui.menu_button(t!("menu.pipeline"), |ui| {
                     let running = self.ui.pipeline_running;
-                    if ui.add_enabled(!running, egui::Button::new(t!("menu.run"))).clicked() {
+                    if ui
+                        .add_enabled(!running, egui::Button::new(t!("menu.run")))
+                        .clicked()
+                    {
                         self.run_pipeline(ctx);
                         ui.close_menu();
                     }
@@ -140,10 +149,8 @@ impl AjisaiApp {
 
                 ScrollArea::vertical().show(ui, |ui| {
                     for (type_name, display_name) in TRANSFORM_TYPES {
-                        let btn = egui::Button::new(
-                            egui::RichText::new(*display_name).size(12.0)
-                        )
-                        .min_size(egui::vec2(155.0, 28.0));
+                        let btn = egui::Button::new(egui::RichText::new(*display_name).size(12.0))
+                            .min_size(egui::vec2(155.0, 28.0));
 
                         if ui.add(btn).clicked() {
                             self.add_node(type_name);
@@ -172,8 +179,8 @@ impl AjisaiApp {
                         ui.add_space(8.0);
 
                         ui.label(t!("prop.config"));
-                        let config_str = serde_json::to_string_pretty(&node.config)
-                            .unwrap_or_default();
+                        let config_str =
+                            serde_json::to_string_pretty(&node.config).unwrap_or_default();
                         let mut buf = config_str;
                         let resp = ui.add(
                             egui::TextEdit::multiline(&mut buf)
@@ -217,20 +224,21 @@ impl AjisaiApp {
                 });
                 ui.separator();
 
-                ScrollArea::vertical()
-                    .stick_to_bottom(true)
-                    .show(ui, |ui| {
-                        for line in &self.ui.log_lines {
-                            let color = if line.starts_with("[ERROR]") || line.starts_with("Error") {
-                                Color32::from_rgb(255, 100, 100)
-                            } else if line.starts_with("[OK]") || line.contains("completed") || line.contains("完了") {
-                                Color32::from_rgb(100, 220, 100)
-                            } else {
-                                Color32::LIGHT_GRAY
-                            };
-                            ui.colored_label(color, egui::RichText::new(line).monospace().size(11.0));
-                        }
-                    });
+                ScrollArea::vertical().stick_to_bottom(true).show(ui, |ui| {
+                    for line in &self.ui.log_lines {
+                        let color = if line.starts_with("[ERROR]") || line.starts_with("Error") {
+                            Color32::from_rgb(255, 100, 100)
+                        } else if line.starts_with("[OK]")
+                            || line.contains("completed")
+                            || line.contains("完了")
+                        {
+                            Color32::from_rgb(100, 220, 100)
+                        } else {
+                            Color32::LIGHT_GRAY
+                        };
+                        ui.colored_label(color, egui::RichText::new(line).monospace().size(11.0));
+                    }
+                });
             });
     }
 
@@ -247,7 +255,8 @@ impl AjisaiApp {
                     if let Some(cursor) = ctx.input(|i| i.pointer.hover_pos()) {
                         if canvas_rect.contains(cursor) {
                             let old_zoom = self.canvas_zoom;
-                            let new_zoom = (old_zoom * (1.0 + scroll_delta * 0.002)).clamp(0.2, 4.0);
+                            let new_zoom =
+                                (old_zoom * (1.0 + scroll_delta * 0.002)).clamp(0.2, 4.0);
                             let world = (cursor.to_vec2() - self.canvas_offset) / old_zoom;
                             self.canvas_offset = cursor.to_vec2() - world * new_zoom;
                             self.canvas_zoom = new_zoom;
@@ -256,7 +265,12 @@ impl AjisaiApp {
                 }
 
                 self.draw_grid(&painter, canvas_rect);
-                draw_edges(&painter, &self.pipeline, self.canvas_offset, self.canvas_zoom);
+                draw_edges(
+                    &painter,
+                    &self.pipeline,
+                    self.canvas_offset,
+                    self.canvas_zoom,
+                );
 
                 if let Some(from_id) = &self.ui.connecting_from.clone() {
                     if let Some(from_node) = self.pipeline.node(from_id) {
@@ -289,12 +303,13 @@ impl AjisaiApp {
                     let connecting_from = self.ui.connecting_from.clone();
 
                     if let Some(node) = self.pipeline.nodes.iter_mut().find(|n| n.id == *node_id) {
-                        let interaction = draw_node(
-                            ui, node, is_selected,
-                            self.canvas_offset, self.canvas_zoom,
-                        );
+                        let interaction =
+                            draw_node(ui, node, is_selected, self.canvas_offset, self.canvas_zoom);
 
-                        if interaction.clicked && !interaction.output_clicked && !interaction.input_clicked {
+                        if interaction.clicked
+                            && !interaction.output_clicked
+                            && !interaction.input_clicked
+                        {
                             self.ui.selected_node = Some(node_id.clone());
                             self.ui.connecting_from = None;
                         }
@@ -364,7 +379,8 @@ impl AjisaiApp {
         node.config = default_config(type_name);
         self.pipeline.add_node(node);
         self.ui.selected_node = Some(id);
-        self.ui.log(t!("log.added", node_type = type_name).to_string());
+        self.ui
+            .log(t!("log.added", node_type = type_name).to_string());
     }
 
     fn validate_pipeline(&mut self) {
@@ -372,12 +388,15 @@ impl AjisaiApp {
             self.ui.log(t!("log.validate_empty").to_string());
             return;
         }
-        self.ui.log(t!(
-            "log.validate_ok",
-            name  = self.pipeline.name.as_str(),
-            nodes = self.pipeline.nodes.len().to_string().as_str(),
-            edges = self.pipeline.edges.len().to_string().as_str(),
-        ).to_string());
+        self.ui.log(
+            t!(
+                "log.validate_ok",
+                name = self.pipeline.name.as_str(),
+                nodes = self.pipeline.nodes.len().to_string().as_str(),
+                edges = self.pipeline.edges.len().to_string().as_str(),
+            )
+            .to_string(),
+        );
     }
 
     fn run_pipeline(&mut self, ctx: &egui::Context) {
@@ -392,7 +411,8 @@ impl AjisaiApp {
         let (tx, rx) = mpsc::channel::<String>();
         self.run_rx = Some(rx);
         self.ui.pipeline_running = true;
-        self.ui.log(t!("log.run_start", name = self.pipeline.name.as_str()).to_string());
+        self.ui
+            .log(t!("log.run_start", name = self.pipeline.name.as_str()).to_string());
 
         let pipeline = self.pipeline.clone();
         let ctx = ctx.clone();
@@ -406,14 +426,18 @@ impl AjisaiApp {
             rt.block_on(async move {
                 match runner::build_and_run(&pipeline).await {
                     Ok(stats) => {
-                        let _ = tx.send(t!(
-                            "log.run_ok",
-                            name = pipeline.name.as_str(),
-                            ms   = stats.elapsed_ms.to_string().as_str(),
-                        ).to_string());
+                        let _ = tx.send(
+                            t!(
+                                "log.run_ok",
+                                name = pipeline.name.as_str(),
+                                ms = stats.elapsed_ms.to_string().as_str(),
+                            )
+                            .to_string(),
+                        );
                     }
                     Err(e) => {
-                        let _ = tx.send(t!("log.run_error", error = e.to_string().as_str()).to_string());
+                        let _ = tx
+                            .send(t!("log.run_error", error = e.to_string().as_str()).to_string());
                     }
                 }
                 let _ = tx.send("__DONE__".into());
@@ -432,7 +456,7 @@ impl AjisaiApp {
                         let cols = 3usize;
                         let pos = [
                             40.0 + (i % cols) as f32 * (NODE_W + 60.0),
-                            40.0 + (i / cols)  as f32 * (NODE_H + 80.0),
+                            40.0 + (i / cols) as f32 * (NODE_H + 80.0),
                         ];
                         let mut node = Node::new(&tr.name, &tr.type_name, pos);
                         node.label = tr.name.clone();
@@ -446,11 +470,13 @@ impl AjisaiApp {
                     }
                     self.pipeline = ps;
                     let path_str = path.display().to_string();
-                    self.ui.log(t!("log.open_ok", path = path_str.as_str()).to_string());
+                    self.ui
+                        .log(t!("log.open_ok", path = path_str.as_str()).to_string());
                 }
                 Err(e) => {
                     let err_str = e.to_string();
-                    self.ui.log(t!("log.open_error", error = err_str.as_str()).to_string());
+                    self.ui
+                        .log(t!("log.open_error", error = err_str.as_str()).to_string());
                 }
             }
         }
@@ -462,9 +488,11 @@ impl AjisaiApp {
             let path_str = path.display().to_string();
             if let Err(e) = std::fs::write(&path, json) {
                 let err_str = e.to_string();
-                self.ui.log(t!("log.save_error", error = err_str.as_str()).to_string());
+                self.ui
+                    .log(t!("log.save_error", error = err_str.as_str()).to_string());
             } else {
-                self.ui.log(t!("log.save_ok", path = path_str.as_str()).to_string());
+                self.ui
+                    .log(t!("log.save_ok", path = path_str.as_str()).to_string());
             }
         }
     }
@@ -475,11 +503,13 @@ impl AjisaiApp {
             match ajisai_hop_compat::write_hpl_file(&self.pipeline_to_hop(), &path) {
                 Ok(()) => {
                     let path_str = path.display().to_string();
-                    self.ui.log(t!("log.save_ok", path = path_str.as_str()).to_string());
+                    self.ui
+                        .log(t!("log.save_ok", path = path_str.as_str()).to_string());
                 }
                 Err(e) => {
                     let err_str = e.to_string();
-                    self.ui.log(t!("log.save_error", error = err_str.as_str()).to_string());
+                    self.ui
+                        .log(t!("log.save_error", error = err_str.as_str()).to_string());
                 }
             }
         }
@@ -487,31 +517,41 @@ impl AjisaiApp {
 
     fn pipeline_to_hop(&self) -> ajisai_hop_compat::HopPipeline {
         use ajisai_hop_compat::model::{HopHop, HopPipeline, HopPipelineInfo, HopTransform};
-        let transforms = self.pipeline.nodes.iter().map(|n| HopTransform {
-            name:        n.label.clone(),
-            type_name:   n.type_name.clone(),
-            description: None,
-            xloc:        Some(n.pos[0] as i32),
-            yloc:        Some(n.pos[1] as i32),
-            attributes:  match &n.config {
-                serde_json::Value::Object(m) => {
-                    m.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
-                }
-                _ => Default::default(),
-            },
-        }).collect();
+        let transforms = self
+            .pipeline
+            .nodes
+            .iter()
+            .map(|n| HopTransform {
+                name: n.label.clone(),
+                type_name: n.type_name.clone(),
+                description: None,
+                xloc: Some(n.pos[0] as i32),
+                yloc: Some(n.pos[1] as i32),
+                attributes: match &n.config {
+                    serde_json::Value::Object(m) => {
+                        m.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
+                    }
+                    _ => Default::default(),
+                },
+            })
+            .collect();
 
-        let order = self.pipeline.edges.iter().map(|e| HopHop {
-            from:    e.from.clone(),
-            to:      e.to.clone(),
-            enabled: Some(true),
-        }).collect();
+        let order = self
+            .pipeline
+            .edges
+            .iter()
+            .map(|e| HopHop {
+                from: e.from.clone(),
+                to: e.to.clone(),
+                enabled: Some(true),
+            })
+            .collect();
 
         HopPipeline {
-            name:       self.pipeline.name.clone(),
+            name: self.pipeline.name.clone(),
             transforms,
             order,
-            info:       HopPipelineInfo { description: None },
+            info: HopPipelineInfo { description: None },
         }
     }
 }
@@ -533,22 +573,34 @@ impl eframe::App for AjisaiApp {
 
 fn default_config(type_name: &str) -> serde_json::Value {
     match type_name {
-        "CsvFileInput"   => serde_json::json!({ "filename": "input.csv",  "delimiter": "," }),
-        "CsvFileOutput"  => serde_json::json!({ "filename": "output.csv", "delimiter": "," }),
-        "JsonFileInput"  => serde_json::json!({ "filename": "input.json", "format": "array" }),
-        "JsonFileOutput" => serde_json::json!({ "filename": "output.json", "format": "array", "pretty": true }),
-        "TableInput"     => serde_json::json!({ "connection_url": "sqlite://data.db", "sql": "SELECT * FROM table_name" }),
-        "TableOutput"    => serde_json::json!({ "connection_url": "sqlite://data.db", "table": "table_name", "mode": "insert" }),
-        "FilterRows"     => serde_json::json!({ "condition": null }),
-        "SelectValues"   => serde_json::json!({ "fields": [] }),
-        "SortRows"       => serde_json::json!({ "keys": [{ "field": "id", "ascending": true }] }),
-        "AddConstants"   => serde_json::json!({ "fields": [] }),
+        "CsvFileInput" => serde_json::json!({ "filename": "input.csv",  "delimiter": "," }),
+        "CsvFileOutput" => serde_json::json!({ "filename": "output.csv", "delimiter": "," }),
+        "JsonFileInput" => serde_json::json!({ "filename": "input.json", "format": "array" }),
+        "JsonFileOutput" => {
+            serde_json::json!({ "filename": "output.json", "format": "array", "pretty": true })
+        }
+        "TableInput" => {
+            serde_json::json!({ "connection_url": "sqlite://data.db", "sql": "SELECT * FROM table_name" })
+        }
+        "TableOutput" => {
+            serde_json::json!({ "connection_url": "sqlite://data.db", "table": "table_name", "mode": "insert" })
+        }
+        "FilterRows" => serde_json::json!({ "condition": null }),
+        "SelectValues" => serde_json::json!({ "fields": [] }),
+        "SortRows" => serde_json::json!({ "keys": [{ "field": "id", "ascending": true }] }),
+        "AddConstants" => serde_json::json!({ "fields": [] }),
         "CalculatorStep" => serde_json::json!({ "calculations": [] }),
-        "StreamLookup"   => serde_json::json!({ "lookup_transform": "", "key_field": "id", "lookup_key_field": "id", "return_fields": [] }),
-        "MergeJoin"      => serde_json::json!({ "left_key": "id", "right_key": "id", "join_type": "inner", "right_prefix": "r_" }),
-        "Deduplicate"    => serde_json::json!({ "key_fields": [] }),
-        "DatabaseLookup" => serde_json::json!({ "connection_url": "sqlite://data.db", "sql": "SELECT * FROM t WHERE id = ?", "key_field": "id", "return_fields": [] }),
-        _                => serde_json::Value::Object(serde_json::Map::new()),
+        "StreamLookup" => {
+            serde_json::json!({ "lookup_transform": "", "key_field": "id", "lookup_key_field": "id", "return_fields": [] })
+        }
+        "MergeJoin" => {
+            serde_json::json!({ "left_key": "id", "right_key": "id", "join_type": "inner", "right_prefix": "r_" })
+        }
+        "Deduplicate" => serde_json::json!({ "key_fields": [] }),
+        "DatabaseLookup" => {
+            serde_json::json!({ "connection_url": "sqlite://data.db", "sql": "SELECT * FROM t WHERE id = ?", "key_field": "id", "return_fields": [] })
+        }
+        _ => serde_json::Value::Object(serde_json::Map::new()),
     }
 }
 

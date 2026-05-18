@@ -19,12 +19,27 @@ pub async fn run(pipeline_path: PathBuf, env_vars: Vec<String>) -> anyhow::Resul
     }
 
     if !pipeline_path.exists() {
-        anyhow::bail!("{}", t!("error.file_not_found", path = pipeline_path.display().to_string().as_str()));
+        anyhow::bail!(
+            "{}",
+            t!(
+                "error.file_not_found",
+                path = pipeline_path.display().to_string().as_str()
+            )
+        );
     }
 
-    let ext = pipeline_path.extension().and_then(|e| e.to_str()).unwrap_or("");
+    let ext = pipeline_path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("");
     if ext != "hpl" {
-        anyhow::bail!("{}", t!("error.unsupported_format", path = pipeline_path.display().to_string().as_str()));
+        anyhow::bail!(
+            "{}",
+            t!(
+                "error.unsupported_format",
+                path = pipeline_path.display().to_string().as_str()
+            )
+        );
     }
 
     let hop_pipeline = load_pipeline_file(&pipeline_path)?;
@@ -49,7 +64,14 @@ pub async fn run(pipeline_path: PathBuf, env_vars: Vec<String>) -> anyhow::Resul
     match engine.run().await {
         Ok(stats) => {
             pb.finish_and_clear();
-            println!("{}", t!("run.success", name = name.as_str(), ms = stats.elapsed_ms.to_string().as_str()));
+            println!(
+                "{}",
+                t!(
+                    "run.success",
+                    name = name.as_str(),
+                    ms = stats.elapsed_ms.to_string().as_str()
+                )
+            );
         }
         Err(e) => {
             pb.finish_and_clear();

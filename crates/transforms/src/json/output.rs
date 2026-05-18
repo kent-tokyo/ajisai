@@ -18,35 +18,44 @@ pub enum JsonOutputFormat {
 }
 
 impl Default for JsonOutputFormat {
-    fn default() -> Self { JsonOutputFormat::Array }
+    fn default() -> Self {
+        JsonOutputFormat::Array
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JsonFileOutputConfig {
     pub filename: String,
     #[serde(default)]
-    pub format:   JsonOutputFormat,
+    pub format: JsonOutputFormat,
     #[serde(default = "default_true")]
-    pub pretty:   bool,
+    pub pretty: bool,
 }
 
-fn default_true() -> bool { true }
+fn default_true() -> bool {
+    true
+}
 
 pub struct JsonFileOutput {
-    config:  JsonFileOutputConfig,
-    buffer:  Vec<serde_json::Map<String, serde_json::Value>>,
-    file:    Option<std::fs::File>,
+    config: JsonFileOutputConfig,
+    buffer: Vec<serde_json::Map<String, serde_json::Value>>,
+    file: Option<std::fs::File>,
     started: bool,
 }
 
 impl JsonFileOutput {
     pub fn new(config: JsonFileOutputConfig) -> Self {
-        Self { config, buffer: Vec::new(), file: None, started: false }
+        Self {
+            config,
+            buffer: Vec::new(),
+            file: None,
+            started: false,
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {
-        let config: JsonFileOutputConfig = serde_json::from_value(value)
-            .map_err(|e| AjisaiError::Config(e.to_string()))?;
+        let config: JsonFileOutputConfig =
+            serde_json::from_value(value).map_err(|e| AjisaiError::Config(e.to_string()))?;
         Ok(Box::new(Self::new(config)))
     }
 
@@ -54,16 +63,14 @@ impl JsonFileOutput {
         let mut map = serde_json::Map::new();
         for (field, value) in row.schema.fields.iter().zip(row.values.iter()) {
             let jv = match value {
-                Value::Str(s)       => serde_json::Value::String(s.clone()),
-                Value::Int(n)       => serde_json::Value::Number((*n).into()),
-                Value::Float(f)     => {
-                    serde_json::Number::from_f64(*f)
-                        .map(serde_json::Value::Number)
-                        .unwrap_or(serde_json::Value::Null)
-                }
-                Value::Bool(b)      => serde_json::Value::Bool(*b),
-                Value::Null         => serde_json::Value::Null,
-                other               => serde_json::Value::String(other.to_display_string()),
+                Value::Str(s) => serde_json::Value::String(s.clone()),
+                Value::Int(n) => serde_json::Value::Number((*n).into()),
+                Value::Float(f) => serde_json::Number::from_f64(*f)
+                    .map(serde_json::Value::Number)
+                    .unwrap_or(serde_json::Value::Null),
+                Value::Bool(b) => serde_json::Value::Bool(*b),
+                Value::Null => serde_json::Value::Null,
+                other => serde_json::Value::String(other.to_display_string()),
             };
             map.insert(field.name.clone(), jv);
         }
@@ -73,7 +80,9 @@ impl JsonFileOutput {
 
 #[async_trait]
 impl Transform for JsonFileOutput {
-    fn name(&self) -> &str { "JsonFileOutput" }
+    fn name(&self) -> &str {
+        "JsonFileOutput"
+    }
 
     fn output_schema(&self, input: &RowSchema) -> Result<RowSchema> {
         Ok(input.clone())
@@ -97,7 +106,9 @@ impl Transform for JsonFileOutput {
 
         match self.config.format {
             JsonOutputFormat::Lines => {
-                let f = self.file.as_mut()
+                let f = self
+                    .file
+                    .as_mut()
                     .ok_or_else(|| AjisaiError::Pipeline("JsonFileOutput not opened".into()))?;
                 let line = serde_json::to_string(&obj)
                     .map_err(|e| AjisaiError::Pipeline(e.to_string()))?;
@@ -115,9 +126,10 @@ impl Transform for JsonFileOutput {
         if let Some(ref mut f) = self.file {
             if matches!(self.config.format, JsonOutputFormat::Array) {
                 let arr = serde_json::Value::Array(
-                    self.buffer.drain(..)
+                    self.buffer
+                        .drain(..)
                         .map(serde_json::Value::Object)
-                        .collect()
+                        .collect(),
                 );
                 let json = if self.config.pretty {
                     serde_json::to_string_pretty(&arr)

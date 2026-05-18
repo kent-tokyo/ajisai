@@ -16,5 +16,7 @@ pub async fn build_and_run(ps: &PipelineState) -> Result<ExecutionStats> {
         pipeline.add_hop(&edge.from, &edge.to);
     }
 
-    PipelineEngine::new(pipeline, ExecutionContext::new()).run().await
+    PipelineEngine::new(pipeline, ExecutionContext::new())
+        .run()
+        .await
 }

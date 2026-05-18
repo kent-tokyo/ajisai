@@ -13,7 +13,7 @@ use std::sync::Arc;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LookupReturnField {
     /// Field name in the lookup stream
-    pub name:   String,
+    pub name: String,
     /// Rename in the output row (defaults to `name`)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rename: Option<String>,
@@ -24,14 +24,14 @@ pub struct StreamLookupConfig {
     /// The name of the lookup transform node (pre-loaded as a source)
     pub lookup_transform: String,
     /// Key field in the main stream
-    pub key_field:        String,
+    pub key_field: String,
     /// Key field in the lookup stream (must match type with `key_field`)
     pub lookup_key_field: String,
     /// Fields to copy from the lookup row into the output row
-    pub return_fields:    Vec<LookupReturnField>,
+    pub return_fields: Vec<LookupReturnField>,
     /// Value to emit for missing keys (null by default)
     #[serde(default)]
-    pub no_match_value:   Option<String>,
+    pub no_match_value: Option<String>,
 }
 
 /// StreamLookup loads a side input (lookup table) into a HashMap keyed by
@@ -42,18 +42,22 @@ pub struct StreamLookupConfig {
 pub struct StreamLookup {
     config: StreamLookupConfig,
     /// key → lookup Row
-    lookup_map:    HashMap<String, Row>,
+    lookup_map: HashMap<String, Row>,
     output_schema: Option<Arc<RowSchema>>,
 }
 
 impl StreamLookup {
     pub fn new(config: StreamLookupConfig) -> Self {
-        Self { config, lookup_map: HashMap::new(), output_schema: None }
+        Self {
+            config,
+            lookup_map: HashMap::new(),
+            output_schema: None,
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {
-        let config: StreamLookupConfig = serde_json::from_value(value)
-            .map_err(|e| AjisaiError::Config(e.to_string()))?;
+        let config: StreamLookupConfig =
+            serde_json::from_value(value).map_err(|e| AjisaiError::Config(e.to_string()))?;
         Ok(Box::new(Self::new(config)))
     }
 
@@ -82,20 +86,26 @@ impl StreamLookup {
 
 #[async_trait]
 impl Transform for StreamLookup {
-    fn name(&self) -> &str { "StreamLookup" }
+    fn name(&self) -> &str {
+        "StreamLookup"
+    }
 
     fn output_schema(&self, input: &RowSchema) -> Result<RowSchema> {
         self.build_output_schema(input)
     }
 
-    fn side_input_count(&self) -> usize { 1 }
+    fn side_input_count(&self) -> usize {
+        1
+    }
 
     async fn load_side_input(&mut self, _idx: usize, rows: Vec<Row>) -> Result<()> {
         self.load_lookup(rows);
         Ok(())
     }
 
-    async fn open(&mut self, _ctx: &ExecutionContext) -> Result<()> { Ok(()) }
+    async fn open(&mut self, _ctx: &ExecutionContext) -> Result<()> {
+        Ok(())
+    }
 
     async fn process(&mut self, row: Row) -> Result<Vec<Row>> {
         let schema = if let Some(s) = &self.output_schema {
@@ -106,13 +116,16 @@ impl Transform for StreamLookup {
             s
         };
 
-        let key = row.get(&self.config.key_field)
+        let key = row
+            .get(&self.config.key_field)
             .map(|v| v.to_display_string())
             .unwrap_or_default();
 
         let lookup_row = self.lookup_map.get(&key);
 
-        let no_match = self.config.no_match_value
+        let no_match = self
+            .config
+            .no_match_value
             .as_deref()
             .map(|s| Value::Str(s.to_owned()))
             .unwrap_or(Value::Null);
@@ -129,7 +142,9 @@ impl Transform for StreamLookup {
         Ok(vec![Row::new(schema, values)])
     }
 
-    async fn close(&mut self) -> Result<()> { Ok(()) }
+    async fn close(&mut self) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -139,7 +154,10 @@ mod tests {
 
     fn make_row(fields: &[(&str, ValueType)], values: Vec<Value>) -> Row {
         let schema = Arc::new(RowSchema::new(
-            fields.iter().map(|(n, t)| Field::new(*n, t.clone())).collect()
+            fields
+                .iter()
+                .map(|(n, t)| Field::new(*n, t.clone()))
+                .collect(),
         ));
         Row::new(schema, values)
     }
@@ -148,18 +166,25 @@ mod tests {
     async fn lookup_hit_and_miss() {
         let config = StreamLookupConfig {
             lookup_transform: "lookup".into(),
-            key_field:        "id".into(),
+            key_field: "id".into(),
             lookup_key_field: "id".into(),
-            return_fields:    vec![LookupReturnField { name: "label".into(), rename: None }],
-            no_match_value:   Some("N/A".into()),
+            return_fields: vec![LookupReturnField {
+                name: "label".into(),
+                rename: None,
+            }],
+            no_match_value: Some("N/A".into()),
         };
         let mut sl = StreamLookup::new(config);
 
         let lookup_rows = vec![
-            make_row(&[("id", ValueType::String), ("label", ValueType::String)],
-                     vec![Value::Str("1".into()), Value::Str("One".into())]),
-            make_row(&[("id", ValueType::String), ("label", ValueType::String)],
-                     vec![Value::Str("2".into()), Value::Str("Two".into())]),
+            make_row(
+                &[("id", ValueType::String), ("label", ValueType::String)],
+                vec![Value::Str("1".into()), Value::Str("One".into())],
+            ),
+            make_row(
+                &[("id", ValueType::String), ("label", ValueType::String)],
+                vec![Value::Str("2".into()), Value::Str("Two".into())],
+            ),
         ];
         sl.load_lookup(lookup_rows);
 

@@ -24,19 +24,19 @@ pub fn parse_hwf(xml: &str) -> Result<HopWorkflow, AjisaiError> {
                 match tag.as_str() {
                     "action" => {
                         current_action = Some(HopAction {
-                            name:      String::new(),
+                            name: String::new(),
                             type_name: String::new(),
-                            xloc:      None,
-                            yloc:      None,
+                            xloc: None,
+                            yloc: None,
                             attributes: Default::default(),
                         });
                     }
                     "hop" => {
                         current_hop = Some(HopWorkflowHop {
-                            from:          String::new(),
-                            to:            String::new(),
-                            enabled:       Some(true),
-                            evaluation:    None,
+                            from: String::new(),
+                            to: String::new(),
+                            enabled: Some(true),
+                            evaluation: None,
                             unconditional: None,
                         });
                     }
@@ -45,7 +45,8 @@ pub fn parse_hwf(xml: &str) -> Result<HopWorkflow, AjisaiError> {
             }
 
             Ok(Event::Text(e)) => {
-                current_text = e.unescape()
+                current_text = e
+                    .unescape()
                     .map_err(|e| AjisaiError::Parse(e.to_string()))?
                     .into_owned();
             }
@@ -56,7 +57,9 @@ pub fn parse_hwf(xml: &str) -> Result<HopWorkflow, AjisaiError> {
                 let depth = stack.len();
 
                 if depth == 2 {
-                    if tag == "name" { workflow.name = text.clone(); }
+                    if tag == "name" {
+                        workflow.name = text.clone();
+                    }
                 }
 
                 if let Some(ref mut a) = current_action {
@@ -66,7 +69,8 @@ pub fn parse_hwf(xml: &str) -> Result<HopWorkflow, AjisaiError> {
                         "xloc" => a.xloc = text.parse().ok(),
                         "yloc" => a.yloc = text.parse().ok(),
                         other if depth > 2 && !text.is_empty() => {
-                            a.attributes.insert(other.to_owned(), serde_json::Value::String(text.clone()));
+                            a.attributes
+                                .insert(other.to_owned(), serde_json::Value::String(text.clone()));
                         }
                         _ => {}
                     }
@@ -74,18 +78,26 @@ pub fn parse_hwf(xml: &str) -> Result<HopWorkflow, AjisaiError> {
 
                 if let Some(ref mut h) = current_hop {
                     match tag.as_str() {
-                        "from"          => h.from = text.clone(),
-                        "to"            => h.to = text.clone(),
-                        "enabled"       => h.enabled = Some(text == "Y" || text == "true"),
-                        "evaluation"    => h.evaluation = Some(text.clone()),
+                        "from" => h.from = text.clone(),
+                        "to" => h.to = text.clone(),
+                        "enabled" => h.enabled = Some(text == "Y" || text == "true"),
+                        "evaluation" => h.evaluation = Some(text.clone()),
                         "unconditional" => h.unconditional = Some(text == "Y" || text == "true"),
                         _ => {}
                     }
                 }
 
                 match tag.as_str() {
-                    "action" => { if let Some(a) = current_action.take() { workflow.actions.push(a); } }
-                    "hop"    => { if let Some(h) = current_hop.take()    { workflow.hops.push(h); } }
+                    "action" => {
+                        if let Some(a) = current_action.take() {
+                            workflow.actions.push(a);
+                        }
+                    }
+                    "hop" => {
+                        if let Some(h) = current_hop.take() {
+                            workflow.hops.push(h);
+                        }
+                    }
                     _ => {}
                 }
 

@@ -3,10 +3,10 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConnectionMeta {
-    pub name:     String,
-    pub db_type:  String,
-    pub host:     String,
-    pub port:     u16,
+    pub name: String,
+    pub db_type: String,
+    pub host: String,
+    pub port: u16,
     pub database: String,
     pub username: String,
     pub password: String,
@@ -15,7 +15,7 @@ pub struct ConnectionMeta {
 /// Runtime context passed to every Transform during execution
 #[derive(Debug, Clone, Default)]
 pub struct ExecutionContext {
-    pub variables:   HashMap<String, String>,
+    pub variables: HashMap<String, String>,
     pub connections: HashMap<String, ConnectionMeta>,
 }
 

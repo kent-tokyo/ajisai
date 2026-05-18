@@ -3,22 +3,22 @@ use serde::{Deserialize, Serialize};
 
 /// A single action in a workflow
 pub struct WorkflowAction {
-    pub name:      String,
-    pub action:    Box<dyn Action>,
+    pub name: String,
+    pub action: Box<dyn Action>,
 }
 
 /// Workflow is a DAG of actions with success/failure/unconditional hops
 pub struct Workflow {
-    pub name:    String,
+    pub name: String,
     pub actions: Vec<WorkflowAction>,
-    pub hops:    Vec<WorkflowHop>,
+    pub hops: Vec<WorkflowHop>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowHop {
-    pub from:          String,
-    pub to:            String,
-    pub evaluation:    HopEvaluation,
+    pub from: String,
+    pub to: String,
+    pub evaluation: HopEvaluation,
     pub unconditional: bool,
 }
 
@@ -41,9 +41,17 @@ pub struct ActionResult {
 }
 
 impl ActionResult {
-    pub fn ok() -> Self { Self { success: true, message: None } }
+    pub fn ok() -> Self {
+        Self {
+            success: true,
+            message: None,
+        }
+    }
     pub fn err(msg: impl Into<String>) -> Self {
-        Self { success: false, message: Some(msg.into()) }
+        Self {
+            success: false,
+            message: Some(msg.into()),
+        }
     }
 }
 
@@ -55,14 +63,27 @@ pub trait Action: Send {
 
 impl Workflow {
     pub fn new(name: impl Into<String>) -> Self {
-        Self { name: name.into(), actions: Vec::new(), hops: Vec::new() }
+        Self {
+            name: name.into(),
+            actions: Vec::new(),
+            hops: Vec::new(),
+        }
     }
 
     pub fn add_action(&mut self, name: impl Into<String>, action: Box<dyn Action>) {
-        self.actions.push(WorkflowAction { name: name.into(), action });
+        self.actions.push(WorkflowAction {
+            name: name.into(),
+            action,
+        });
     }
 
-    pub fn add_hop(&mut self, from: impl Into<String>, to: impl Into<String>, evaluation: HopEvaluation, unconditional: bool) {
+    pub fn add_hop(
+        &mut self,
+        from: impl Into<String>,
+        to: impl Into<String>,
+        evaluation: HopEvaluation,
+        unconditional: bool,
+    ) {
         self.hops.push(WorkflowHop {
             from: from.into(),
             to: to.into(),
@@ -74,14 +95,16 @@ impl Workflow {
     fn start_actions(&self) -> Vec<&str> {
         let has_incoming: std::collections::HashSet<&str> =
             self.hops.iter().map(|h| h.to.as_str()).collect();
-        self.actions.iter()
+        self.actions
+            .iter()
             .map(|a| a.name.as_str())
             .filter(|n| !has_incoming.contains(n))
             .collect()
     }
 
     fn next_actions(&self, from: &str, success: bool) -> Vec<&str> {
-        self.hops.iter()
+        self.hops
+            .iter()
             .filter(|h| h.from == from)
             .filter(|h| {
                 h.unconditional
@@ -96,7 +119,7 @@ impl Workflow {
 
 pub struct WorkflowEngine {
     pub workflow: Workflow,
-    pub context:  crate::context::ExecutionContext,
+    pub context: crate::context::ExecutionContext,
 }
 
 impl WorkflowEngine {
@@ -108,8 +131,12 @@ impl WorkflowEngine {
         let start = std::time::Instant::now();
         tracing::info!("Running workflow '{}'", self.workflow.name);
 
-        let mut pending: Vec<String> = self.workflow.start_actions()
-            .into_iter().map(String::from).collect();
+        let mut pending: Vec<String> = self
+            .workflow
+            .start_actions()
+            .into_iter()
+            .map(String::from)
+            .collect();
         let mut visited: std::collections::HashSet<String> = std::collections::HashSet::new();
         let mut total_actions = 0usize;
         let mut failed_actions = 0usize;
@@ -120,11 +147,14 @@ impl WorkflowEngine {
                 continue; // already executed
             }
 
-            let action = self.workflow.actions.iter_mut()
+            let action = self
+                .workflow
+                .actions
+                .iter_mut()
                 .find(|a| a.name == current_name)
-                .ok_or_else(|| AjisaiError::Pipeline(
-                    format!("Workflow action '{}' not found", current_name)
-                ))?;
+                .ok_or_else(|| {
+                    AjisaiError::Pipeline(format!("Workflow action '{}' not found", current_name))
+                })?;
 
             tracing::info!("Executing action '{}'", current_name);
             let result = action.action.execute(&self.context).await;
@@ -155,7 +185,7 @@ impl WorkflowEngine {
 
 #[derive(Debug, Default)]
 pub struct WorkflowStats {
-    pub total_actions:  usize,
+    pub total_actions: usize,
     pub failed_actions: usize,
-    pub elapsed_ms:     u64,
+    pub elapsed_ms: u64,
 }

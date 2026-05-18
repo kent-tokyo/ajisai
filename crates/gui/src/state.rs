@@ -2,32 +2,32 @@ use serde::{Deserialize, Serialize};
 
 /// All available transform type names shown in the palette
 pub const TRANSFORM_TYPES: &[(&str, &str)] = &[
-    ("CsvFileInput",   "CSV Input"),
-    ("CsvFileOutput",  "CSV Output"),
-    ("JsonFileInput",  "JSON Input"),
+    ("CsvFileInput", "CSV Input"),
+    ("CsvFileOutput", "CSV Output"),
+    ("JsonFileInput", "JSON Input"),
     ("JsonFileOutput", "JSON Output"),
-    ("TableInput",     "Table Input"),
-    ("TableOutput",    "Table Output"),
-    ("FilterRows",     "Filter Rows"),
-    ("SelectValues",   "Select Values"),
-    ("SortRows",       "Sort Rows"),
-    ("AddConstants",   "Add Constants"),
+    ("TableInput", "Table Input"),
+    ("TableOutput", "Table Output"),
+    ("FilterRows", "Filter Rows"),
+    ("SelectValues", "Select Values"),
+    ("SortRows", "Sort Rows"),
+    ("AddConstants", "Add Constants"),
     ("CalculatorStep", "Calculator"),
-    ("StreamLookup",   "Stream Lookup"),
-    ("MergeJoin",      "Merge Join"),
-    ("Deduplicate",    "Deduplicate"),
+    ("StreamLookup", "Stream Lookup"),
+    ("MergeJoin", "Merge Join"),
+    ("Deduplicate", "Deduplicate"),
     ("DatabaseLookup", "DB Lookup"),
 ];
 
 /// A node placed on the pipeline canvas
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Node {
-    pub id:         String,
-    pub type_name:  String,
-    pub label:      String,
-    pub pos:        [f32; 2],
+    pub id: String,
+    pub type_name: String,
+    pub label: String,
+    pub pos: [f32; 2],
     /// JSON config for this transform (edited via property panel)
-    pub config:     serde_json::Value,
+    pub config: serde_json::Value,
 }
 
 impl Node {
@@ -56,23 +56,28 @@ impl Node {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct Edge {
     pub from: String,
-    pub to:   String,
+    pub to: String,
 }
 
 /// The full pipeline editor state (serializable → save/load as JSON)
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PipelineState {
-    pub name:  String,
+    pub name: String,
     pub nodes: Vec<Node>,
     pub edges: Vec<Edge>,
     /// Monotonically increasing counter — never reused even after node deletion
     #[serde(default)]
-    node_seq:  u64,
+    node_seq: u64,
 }
 
 impl PipelineState {
     pub fn new(name: impl Into<String>) -> Self {
-        Self { name: name.into(), nodes: Vec::new(), edges: Vec::new(), node_seq: 0 }
+        Self {
+            name: name.into(),
+            nodes: Vec::new(),
+            edges: Vec::new(),
+            node_seq: 0,
+        }
     }
 
     pub fn add_node(&mut self, node: Node) {
@@ -85,7 +90,10 @@ impl PipelineState {
     }
 
     pub fn add_edge(&mut self, from: impl Into<String>, to: impl Into<String>) {
-        let e = Edge { from: from.into(), to: to.into() };
+        let e = Edge {
+            from: from.into(),
+            to: to.into(),
+        };
         if !self.edges.contains(&e) {
             self.edges.push(e);
         }
@@ -119,13 +127,13 @@ impl PipelineState {
 /// Runtime state (not serialized)
 #[derive(Debug, Default)]
 pub struct UiState {
-    pub selected_node:     Option<String>,
+    pub selected_node: Option<String>,
     /// Node being connected: Some(from_id) while dragging an edge
-    pub connecting_from:   Option<String>,
-    pub log_lines:         Vec<String>,
-    pub pipeline_running:  bool,
+    pub connecting_from: Option<String>,
+    pub log_lines: Vec<String>,
+    pub pipeline_running: bool,
     /// File path of the currently opened pipeline
-    pub current_file:      Option<std::path::PathBuf>,
+    pub current_file: Option<std::path::PathBuf>,
 }
 
 impl UiState {

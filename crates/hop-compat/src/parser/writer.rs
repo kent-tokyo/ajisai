@@ -7,9 +7,15 @@ pub fn write_hpl(pipeline: &HopPipeline) -> Result<String, AjisaiError> {
 
     // <info>
     out.push_str("  <info>\n");
-    out.push_str(&format!("    <name>{}</name>\n", xml_escape(&pipeline.name)));
+    out.push_str(&format!(
+        "    <name>{}</name>\n",
+        xml_escape(&pipeline.name)
+    ));
     if let Some(desc) = &pipeline.info.description {
-        out.push_str(&format!("    <description>{}</description>\n", xml_escape(desc)));
+        out.push_str(&format!(
+            "    <description>{}</description>\n",
+            xml_escape(desc)
+        ));
     }
     out.push_str("    <pipeline_version/>\n");
     out.push_str("  </info>\n\n");
@@ -17,10 +23,12 @@ pub fn write_hpl(pipeline: &HopPipeline) -> Result<String, AjisaiError> {
     // <transform> elements
     for t in &pipeline.transforms {
         out.push_str("  <transform>\n");
-        out.push_str(&format!("    <name>{}</name>\n",     xml_escape(&t.name)));
-        out.push_str(&format!("    <type>{}</type>\n",     xml_escape(&t.type_name)));
-        out.push_str(&format!("    <description>{}</description>\n",
-            xml_escape(t.description.as_deref().unwrap_or(""))));
+        out.push_str(&format!("    <name>{}</name>\n", xml_escape(&t.name)));
+        out.push_str(&format!("    <type>{}</type>\n", xml_escape(&t.type_name)));
+        out.push_str(&format!(
+            "    <description>{}</description>\n",
+            xml_escape(t.description.as_deref().unwrap_or(""))
+        ));
         out.push_str("    <distribute>Y</distribute>\n");
         out.push_str("    <custom_distribution/>\n");
         out.push_str("    <copies>1</copies>\n");
@@ -31,11 +39,7 @@ pub fn write_hpl(pipeline: &HopPipeline) -> Result<String, AjisaiError> {
                 continue;
             }
             let val_str = json_value_to_string(value);
-            out.push_str(&format!(
-                "    <{0}>{1}</{0}>\n",
-                key,
-                xml_escape(&val_str),
-            ));
+            out.push_str(&format!("    <{0}>{1}</{0}>\n", key, xml_escape(&val_str),));
         }
 
         // GUI position
@@ -50,9 +54,13 @@ pub fn write_hpl(pipeline: &HopPipeline) -> Result<String, AjisaiError> {
     out.push_str("  <order>\n");
     for hop in &pipeline.order {
         out.push_str("    <hop>\n");
-        out.push_str(&format!("      <from>{}</from>\n",       xml_escape(&hop.from)));
-        out.push_str(&format!("      <to>{}</to>\n",           xml_escape(&hop.to)));
-        let enabled = if hop.enabled.unwrap_or(true) { "Y" } else { "N" };
+        out.push_str(&format!("      <from>{}</from>\n", xml_escape(&hop.from)));
+        out.push_str(&format!("      <to>{}</to>\n", xml_escape(&hop.to)));
+        let enabled = if hop.enabled.unwrap_or(true) {
+            "Y"
+        } else {
+            "N"
+        };
         out.push_str(&format!("      <enabled>{}</enabled>\n", enabled));
         out.push_str("    </hop>\n");
     }
@@ -69,11 +77,11 @@ pub fn write_hpl_file(pipeline: &HopPipeline, path: &std::path::Path) -> Result<
 }
 
 fn xml_escape(s: &str) -> String {
-    s.replace('&',  "&amp;")
-     .replace('<',  "&lt;")
-     .replace('>',  "&gt;")
-     .replace('"',  "&quot;")
-     .replace('\'', "&apos;")
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&apos;")
 }
 
 /// Validate that `name` is a legal XML element name.
@@ -81,17 +89,24 @@ fn xml_escape(s: &str) -> String {
 /// ASCII letters, digits, underscores, hyphens, or periods.
 fn validate_xml_name(name: &str) -> Result<(), AjisaiError> {
     if name.is_empty() {
-        return Err(AjisaiError::Config("XML element name cannot be empty".into()));
+        return Err(AjisaiError::Config(
+            "XML element name cannot be empty".into(),
+        ));
     }
     let first = name.chars().next().unwrap();
     if !first.is_ascii_alphabetic() && first != '_' {
         return Err(AjisaiError::Config(format!(
-            "XML element name '{}' must start with a letter or underscore", name
+            "XML element name '{}' must start with a letter or underscore",
+            name
         )));
     }
-    if !name.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.')) {
+    if !name
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.'))
+    {
         return Err(AjisaiError::Config(format!(
-            "XML element name '{}' contains invalid characters", name
+            "XML element name '{}' contains invalid characters",
+            name
         )));
     }
     Ok(())
@@ -99,10 +114,16 @@ fn validate_xml_name(name: &str) -> Result<(), AjisaiError> {
 
 fn json_value_to_string(v: &serde_json::Value) -> String {
     match v {
-        serde_json::Value::String(s)  => s.clone(),
-        serde_json::Value::Number(n)  => n.to_string(),
-        serde_json::Value::Bool(b)    => if *b { "Y".into() } else { "N".into() },
-        serde_json::Value::Null       => String::new(),
-        other                         => other.to_string(),
+        serde_json::Value::String(s) => s.clone(),
+        serde_json::Value::Number(n) => n.to_string(),
+        serde_json::Value::Bool(b) => {
+            if *b {
+                "Y".into()
+            } else {
+                "N".into()
+            }
+        }
+        serde_json::Value::Null => String::new(),
+        other => other.to_string(),
     }
 }

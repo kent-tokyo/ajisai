@@ -25,18 +25,18 @@ pub fn parse_hpl(xml: &str) -> Result<HopPipeline, AjisaiError> {
                 match tag.as_str() {
                     "transform" => {
                         current_transform = Some(HopTransform {
-                            name:        String::new(),
-                            type_name:   String::new(),
+                            name: String::new(),
+                            type_name: String::new(),
                             description: None,
-                            xloc:        None,
-                            yloc:        None,
-                            attributes:  HashMap::new(),
+                            xloc: None,
+                            yloc: None,
+                            attributes: HashMap::new(),
                         });
                     }
                     "hop" if in_context(&stack, "order") => {
                         current_hop = Some(HopHop {
-                            from:    String::new(),
-                            to:      String::new(),
+                            from: String::new(),
+                            to: String::new(),
                             enabled: Some(true),
                         });
                     }
@@ -45,7 +45,8 @@ pub fn parse_hpl(xml: &str) -> Result<HopPipeline, AjisaiError> {
             }
 
             Ok(Event::Text(e)) => {
-                current_text = e.unescape()
+                current_text = e
+                    .unescape()
                     .map_err(|e| AjisaiError::Parse(e.to_string()))?
                     .into_owned();
             }
@@ -67,14 +68,17 @@ pub fn parse_hpl(xml: &str) -> Result<HopPipeline, AjisaiError> {
                 if let Some(ref mut t) = current_transform {
                     if in_context(&stack, "transform") {
                         match tag.as_str() {
-                            "name"        => t.name = text.clone(),
-                            "type"        => t.type_name = text.clone(),
+                            "name" => t.name = text.clone(),
+                            "type" => t.type_name = text.clone(),
                             "description" => t.description = Some(text.clone()),
-                            "xloc"        => t.xloc = text.parse().ok(),
-                            "yloc"        => t.yloc = text.parse().ok(),
+                            "xloc" => t.xloc = text.parse().ok(),
+                            "yloc" => t.yloc = text.parse().ok(),
                             // Everything else becomes an attribute
                             other if depth > 2 && !text.is_empty() => {
-                                t.attributes.insert(other.to_owned(), serde_json::Value::String(text.clone()));
+                                t.attributes.insert(
+                                    other.to_owned(),
+                                    serde_json::Value::String(text.clone()),
+                                );
                             }
                             _ => {}
                         }
@@ -85,8 +89,8 @@ pub fn parse_hpl(xml: &str) -> Result<HopPipeline, AjisaiError> {
                 if let Some(ref mut h) = current_hop {
                     if in_context(&stack, "order") {
                         match tag.as_str() {
-                            "from"    => h.from = text.clone(),
-                            "to"      => h.to = text.clone(),
+                            "from" => h.from = text.clone(),
+                            "to" => h.to = text.clone(),
                             "enabled" => h.enabled = Some(text == "Y" || text == "true"),
                             _ => {}
                         }
@@ -116,13 +120,17 @@ pub fn parse_hpl(xml: &str) -> Result<HopPipeline, AjisaiError> {
                 // Self-closing tags (e.g. <hop from="A" to="B" enabled="Y"/>)
                 let tag = String::from_utf8_lossy(e.name().as_ref()).into_owned();
                 if tag == "hop" {
-                    let mut h = HopHop { from: String::new(), to: String::new(), enabled: Some(true) };
+                    let mut h = HopHop {
+                        from: String::new(),
+                        to: String::new(),
+                        enabled: Some(true),
+                    };
                     for attr in e.attributes().flatten() {
                         let key = String::from_utf8_lossy(attr.key.as_ref()).into_owned();
                         let val = String::from_utf8_lossy(&attr.value).into_owned();
                         match key.as_str() {
-                            "from"    => h.from = val,
-                            "to"      => h.to = val,
+                            "from" => h.from = val,
+                            "to" => h.to = val,
                             "enabled" => h.enabled = Some(val == "Y" || val == "true"),
                             _ => {}
                         }
@@ -173,13 +181,13 @@ pub fn hop_pipeline_to_ajisai(
 /// Map Apache Hop transform type names to ajisai type names
 fn map_transform_type(hop_type: &str) -> &str {
     match hop_type {
-        "CSVFileInput" | "CsvInput"  => "CsvFileInput",
+        "CSVFileInput" | "CsvInput" => "CsvFileInput",
         "CSVFileOutput" | "CsvOutput" => "CsvFileOutput",
-        "FilterRows"                 => "FilterRows",
-        "SelectValues"               => "SelectValues",
-        "SortRows"                   => "SortRows",
-        "AddConstants" | "Constant"  => "AddConstants",
-        other                        => other,
+        "FilterRows" => "FilterRows",
+        "SelectValues" => "SelectValues",
+        "SortRows" => "SortRows",
+        "AddConstants" | "Constant" => "AddConstants",
+        other => other,
     }
 }
 
@@ -198,7 +206,10 @@ fn build_transform_config(ht: &HopTransform) -> serde_json::Value {
         }
     }
     if let Some(header) = ht.attributes.get("header") {
-        let has_header = header.as_str().map(|s| s == "Y" || s == "true").unwrap_or(true);
+        let has_header = header
+            .as_str()
+            .map(|s| s == "Y" || s == "true")
+            .unwrap_or(true);
         map.insert("header_present".into(), serde_json::Value::Bool(has_header));
     }
 

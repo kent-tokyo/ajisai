@@ -19,30 +19,40 @@ pub struct DeduplicateConfig {
 /// Internally maintains a HashSet of seen keys (in-memory).
 pub struct Deduplicate {
     config: DeduplicateConfig,
-    seen:   HashSet<String>,
+    seen: HashSet<String>,
 }
 
 impl Deduplicate {
     pub fn new(config: DeduplicateConfig) -> Self {
-        Self { config, seen: HashSet::new() }
+        Self {
+            config,
+            seen: HashSet::new(),
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {
-        let config: DeduplicateConfig = serde_json::from_value(value)
-            .map_err(|e| AjisaiError::Config(e.to_string()))?;
+        let config: DeduplicateConfig =
+            serde_json::from_value(value).map_err(|e| AjisaiError::Config(e.to_string()))?;
         Ok(Box::new(Self::new(config)))
     }
 
     fn row_key(&self, row: &Row) -> String {
         if self.config.key_fields.is_empty() {
             // All fields form the key
-            row.values.iter()
+            row.values
+                .iter()
                 .map(|v| v.to_display_string())
                 .collect::<Vec<_>>()
                 .join("\x00")
         } else {
-            self.config.key_fields.iter()
-                .map(|f| row.get(f).map(|v| v.to_display_string()).unwrap_or_default())
+            self.config
+                .key_fields
+                .iter()
+                .map(|f| {
+                    row.get(f)
+                        .map(|v| v.to_display_string())
+                        .unwrap_or_default()
+                })
                 .collect::<Vec<_>>()
                 .join("\x00")
         }
@@ -51,7 +61,9 @@ impl Deduplicate {
 
 #[async_trait]
 impl Transform for Deduplicate {
-    fn name(&self) -> &str { "Deduplicate" }
+    fn name(&self) -> &str {
+        "Deduplicate"
+    }
 
     fn output_schema(&self, input: &RowSchema) -> Result<RowSchema> {
         Ok(input.clone())
@@ -67,11 +79,13 @@ impl Transform for Deduplicate {
         if self.seen.insert(key) {
             Ok(vec![row]) // first occurrence — pass through
         } else {
-            Ok(vec![])   // duplicate — drop
+            Ok(vec![]) // duplicate — drop
         }
     }
 
-    async fn close(&mut self) -> Result<()> { Ok(()) }
+    async fn close(&mut self) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -83,7 +97,7 @@ mod tests {
     fn make_row(name: &str, age: i64) -> Row {
         let schema = Arc::new(RowSchema::new(vec![
             Field::new("name", ValueType::String),
-            Field::new("age",  ValueType::Integer),
+            Field::new("age", ValueType::Integer),
         ]));
         Row::new(schema, vec![Value::Str(name.into()), Value::Int(age)])
     }
@@ -106,7 +120,9 @@ mod tests {
 
     #[tokio::test]
     async fn deduplicates_by_key_field() {
-        let config = DeduplicateConfig { key_fields: vec!["name".into()] };
+        let config = DeduplicateConfig {
+            key_fields: vec!["name".into()],
+        };
         let mut dedup = Deduplicate::new(config);
         let ctx = ExecutionContext::new();
         dedup.open(&ctx).await.unwrap();

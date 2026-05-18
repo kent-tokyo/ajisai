@@ -1,4 +1,8 @@
-use crate::{context::ExecutionContext, error::Result, value::{Row, RowSchema}};
+use crate::{
+    context::ExecutionContext,
+    error::Result,
+    value::{Row, RowSchema},
+};
 use async_trait::async_trait;
 use std::sync::Arc;
 
@@ -21,7 +25,9 @@ pub trait Transform: Send {
 
     /// Called by the engine after all process() calls finish.
     /// Buffering transforms (e.g., SortRows) emit their accumulated output here.
-    async fn flush(&mut self) -> Result<Vec<Row>> { Ok(vec![]) }
+    async fn flush(&mut self) -> Result<Vec<Row>> {
+        Ok(vec![])
+    }
 
     /// Flush buffered data and release resources
     async fn close(&mut self) -> Result<()>;
@@ -41,11 +47,15 @@ pub trait Transform: Send {
     /// For join/lookup transforms: how many of this node's input channels are "side inputs"
     /// that must be fully pre-loaded before main-stream processing begins.
     /// Side inputs are always the *last* N incoming hops in the pipeline.
-    fn side_input_count(&self) -> usize { 0 }
+    fn side_input_count(&self) -> usize {
+        0
+    }
 
     /// Called by the engine with all rows from side-input channel `idx`,
     /// before any main-stream process() calls begin.
-    async fn load_side_input(&mut self, _idx: usize, _rows: Vec<Row>) -> Result<()> { Ok(()) }
+    async fn load_side_input(&mut self, _idx: usize, _rows: Vec<Row>) -> Result<()> {
+        Ok(())
+    }
 }
 
 /// Prototype factory: given a serialized config, construct a boxed Transform

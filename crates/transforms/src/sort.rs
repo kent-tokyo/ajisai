@@ -1,5 +1,7 @@
 use ajisai_core::{
-    context::ExecutionContext, error::Result, value::{Row, RowSchema, Value},
+    context::ExecutionContext,
+    error::Result,
+    value::{Row, RowSchema, Value},
     AjisaiError, Transform,
 };
 use async_trait::async_trait;
@@ -8,12 +10,14 @@ use std::cmp::Ordering;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SortKey {
-    pub field:      String,
+    pub field: String,
     #[serde(default = "default_ascending")]
-    pub ascending:  bool,
+    pub ascending: bool,
 }
 
-fn default_ascending() -> bool { true }
+fn default_ascending() -> bool {
+    true
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SortRowsConfig {
@@ -29,26 +33,33 @@ pub struct SortRows {
 
 impl SortRows {
     pub fn new(config: SortRowsConfig) -> Self {
-        Self { config, buffer: Vec::new() }
+        Self {
+            config,
+            buffer: Vec::new(),
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {
-        let config: SortRowsConfig = serde_json::from_value(value)
-            .map_err(|e| AjisaiError::Config(e.to_string()))?;
+        let config: SortRowsConfig =
+            serde_json::from_value(value).map_err(|e| AjisaiError::Config(e.to_string()))?;
         Ok(Box::new(Self::new(config)))
     }
 
     fn compare_values(a: &Value, b: &Value) -> Ordering {
         match (a, b) {
-            (Value::Int(x),   Value::Int(y))   => x.cmp(y),
+            (Value::Int(x), Value::Int(y)) => x.cmp(y),
             (Value::Float(x), Value::Float(y)) => x.partial_cmp(y).unwrap_or(Ordering::Equal),
-            (Value::Int(x),   Value::Float(y)) => (*x as f64).partial_cmp(y).unwrap_or(Ordering::Equal),
-            (Value::Float(x), Value::Int(y))   => x.partial_cmp(&(*y as f64)).unwrap_or(Ordering::Equal),
-            (Value::Str(x),   Value::Str(y))   => x.cmp(y),
-            (Value::Bool(x),  Value::Bool(y))  => x.cmp(y),
-            (Value::Null,     Value::Null)      => Ordering::Equal,
-            (Value::Null,     _)               => Ordering::Less,
-            (_,               Value::Null)     => Ordering::Greater,
+            (Value::Int(x), Value::Float(y)) => {
+                (*x as f64).partial_cmp(y).unwrap_or(Ordering::Equal)
+            }
+            (Value::Float(x), Value::Int(y)) => {
+                x.partial_cmp(&(*y as f64)).unwrap_or(Ordering::Equal)
+            }
+            (Value::Str(x), Value::Str(y)) => x.cmp(y),
+            (Value::Bool(x), Value::Bool(y)) => x.cmp(y),
+            (Value::Null, Value::Null) => Ordering::Equal,
+            (Value::Null, _) => Ordering::Less,
+            (_, Value::Null) => Ordering::Greater,
             (a, b) => a.to_display_string().cmp(&b.to_display_string()),
         }
     }
@@ -56,7 +67,9 @@ impl SortRows {
 
 #[async_trait]
 impl Transform for SortRows {
-    fn name(&self) -> &str { "SortRows" }
+    fn name(&self) -> &str {
+        "SortRows"
+    }
 
     fn output_schema(&self, input: &RowSchema) -> Result<RowSchema> {
         Ok(input.clone())
@@ -115,7 +128,7 @@ mod tests {
     fn make_row(name: &str, age: i64) -> Row {
         let schema = Arc::new(RowSchema::new(vec![
             Field::new("name", ValueType::String),
-            Field::new("age",  ValueType::Integer),
+            Field::new("age", ValueType::Integer),
         ]));
         Row::new(schema, vec![Value::Str(name.into()), Value::Int(age)])
     }
@@ -123,12 +136,16 @@ mod tests {
     #[test]
     fn sort_by_age_asc() {
         let config = SortRowsConfig {
-            keys: vec![SortKey { field: "age".into(), ascending: true }],
+            keys: vec![SortKey {
+                field: "age".into(),
+                ascending: true,
+            }],
         };
         let mut sorter = SortRows::new(config);
         sorter.buffer = vec![make_row("C", 30), make_row("A", 10), make_row("B", 20)];
         let sorted = sorter.flush_sorted();
-        let ages: Vec<i64> = sorted.iter()
+        let ages: Vec<i64> = sorted
+            .iter()
             .map(|r| r.get("age").and_then(|v| v.as_int()).unwrap())
             .collect();
         assert_eq!(ages, vec![10, 20, 30]);

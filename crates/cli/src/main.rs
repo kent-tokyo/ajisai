@@ -8,8 +8,8 @@ use tracing_subscriber::{fmt, EnvFilter};
 
 #[derive(Parser)]
 #[command(
-    name    = "ajisai-cli",
-    about   = "Ajisai ETL — Apache Hop compatible pipeline runner",
+    name = "ajisai-cli",
+    about = "Ajisai ETL — Apache Hop compatible pipeline runner",
     version
 )]
 struct Cli {
@@ -61,14 +61,11 @@ async fn main() {
 
     rust_i18n::set_locale(&cli.lang);
 
-    let filter = EnvFilter::try_new(&cli.log_level)
-        .unwrap_or_else(|_| EnvFilter::new("warn"));
+    let filter = EnvFilter::try_new(&cli.log_level).unwrap_or_else(|_| EnvFilter::new("warn"));
     fmt().with_env_filter(filter).init();
 
     let result = match cli.command {
-        Commands::Run { pipeline, env } => {
-            commands::run::run(pipeline, env).await
-        }
+        Commands::Run { pipeline, env } => commands::run::run(pipeline, env).await,
         Commands::Validate { pipeline } => {
             commands::validate::validate(pipeline).map_err(Into::into)
         }

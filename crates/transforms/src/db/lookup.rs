@@ -17,17 +17,17 @@ use tokio::sync::mpsc;
 pub struct DatabaseLookupConfig {
     pub connection_url: String,
     /// SQL with one `?` placeholder (e.g. "SELECT * FROM t WHERE id = ?")
-    pub sql:            String,
+    pub sql: String,
     /// Field in the input row used as the lookup key
-    pub key_field:      String,
+    pub key_field: String,
     /// DB columns to append to the input row; empty = append all columns
     #[serde(default)]
-    pub return_fields:  Vec<String>,
+    pub return_fields: Vec<String>,
 }
 
 pub struct DatabaseLookup {
     config: DatabaseLookupConfig,
-    pool:   Option<AnyPool>,
+    pool: Option<AnyPool>,
 }
 
 impl DatabaseLookup {
@@ -36,8 +36,8 @@ impl DatabaseLookup {
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {
-        let config: DatabaseLookupConfig = serde_json::from_value(value)
-            .map_err(|e| AjisaiError::Config(e.to_string()))?;
+        let config: DatabaseLookupConfig =
+            serde_json::from_value(value).map_err(|e| AjisaiError::Config(e.to_string()))?;
         Ok(Box::new(Self::new(config)))
     }
 
@@ -60,7 +60,9 @@ impl DatabaseLookup {
 
 #[async_trait]
 impl Transform for DatabaseLookup {
-    fn name(&self) -> &str { "DatabaseLookup" }
+    fn name(&self) -> &str {
+        "DatabaseLookup"
+    }
 
     fn output_schema(&self, input: &RowSchema) -> Result<RowSchema> {
         // Return fields are unknown at schema-time without a DB connection;
@@ -74,7 +76,9 @@ impl Transform for DatabaseLookup {
         Ok(RowSchema::new(fields))
     }
 
-    fn is_source(&self) -> bool { false }
+    fn is_source(&self) -> bool {
+        false
+    }
 
     async fn open(&mut self, _ctx: &ExecutionContext) -> Result<()> {
         sqlx::any::install_default_drivers();
@@ -86,9 +90,10 @@ impl Transform for DatabaseLookup {
     }
 
     async fn process(&mut self, row: Row) -> Result<Vec<Row>> {
-        let pool = self.pool.as_ref().ok_or_else(|| {
-            AjisaiError::Pipeline("DatabaseLookup pool not initialised".into())
-        })?;
+        let pool = self
+            .pool
+            .as_ref()
+            .ok_or_else(|| AjisaiError::Pipeline("DatabaseLookup pool not initialised".into()))?;
 
         // Extract key value as string for binding
         let key_val = match row.schema.field_index(&self.config.key_field) {
@@ -126,7 +131,12 @@ impl Transform for DatabaseLookup {
             self.config
                 .return_fields
                 .iter()
-                .filter_map(|rf| col_names.iter().position(|c| c == rf).map(|i| (i, rf.clone())))
+                .filter_map(|rf| {
+                    col_names
+                        .iter()
+                        .position(|c| c == rf)
+                        .map(|i| (i, rf.clone()))
+                })
                 .collect()
         };
 
@@ -144,11 +154,14 @@ impl Transform for DatabaseLookup {
             let val = Self::sqlx_to_value(&db_row, *col_idx);
             match row.schema.field_index(name) {
                 Some(i) => out_values[i] = val,
-                None    => out_values.push(val),
+                None => out_values.push(val),
             }
         }
 
-        Ok(vec![Row { schema: out_schema, values: out_values }])
+        Ok(vec![Row {
+            schema: out_schema,
+            values: out_values,
+        }])
     }
 
     async fn close(&mut self) -> Result<()> {
@@ -178,5 +191,8 @@ fn append_nulls(row: Row, return_fields: &[String]) -> Row {
     for _ in 0..extra_count {
         out_values.push(Value::Null);
     }
-    Row { schema: Arc::new(RowSchema::new(out_fields)), values: out_values }
+    Row {
+        schema: Arc::new(RowSchema::new(out_fields)),
+        values: out_values,
+    }
 }

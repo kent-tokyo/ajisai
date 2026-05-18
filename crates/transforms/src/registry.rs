@@ -8,7 +8,9 @@ pub struct TransformRegistry {
 
 impl TransformRegistry {
     pub fn new() -> Self {
-        Self { factories: HashMap::new() }
+        Self {
+            factories: HashMap::new(),
+        }
     }
 
     pub fn register(&mut self, type_name: impl Into<String>, factory: TransformFactory) {

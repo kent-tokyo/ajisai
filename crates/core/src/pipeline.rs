@@ -5,37 +5,43 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Hop {
     pub from: String,
-    pub to:   String,
+    pub to: String,
 }
 
 /// A single node in the pipeline DAG
 pub struct TransformNode {
-    pub id:        String,
+    pub id: String,
     pub transform: Box<dyn Transform>,
 }
 
 /// The full pipeline definition
 pub struct Pipeline {
-    pub name:  String,
+    pub name: String,
     pub nodes: Vec<TransformNode>,
-    pub hops:  Vec<Hop>,
+    pub hops: Vec<Hop>,
 }
 
 impl Pipeline {
     pub fn new(name: impl Into<String>) -> Self {
         Self {
-            name:  name.into(),
+            name: name.into(),
             nodes: Vec::new(),
-            hops:  Vec::new(),
+            hops: Vec::new(),
         }
     }
 
     pub fn add_node(&mut self, id: impl Into<String>, transform: Box<dyn Transform>) {
-        self.nodes.push(TransformNode { id: id.into(), transform });
+        self.nodes.push(TransformNode {
+            id: id.into(),
+            transform,
+        });
     }
 
     pub fn add_hop(&mut self, from: impl Into<String>, to: impl Into<String>) {
-        self.hops.push(Hop { from: from.into(), to: to.into() });
+        self.hops.push(Hop {
+            from: from.into(),
+            to: to.into(),
+        });
     }
 
     /// Returns node IDs in topological order (sources first)

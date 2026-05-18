@@ -19,13 +19,15 @@ pub enum JoinType {
 }
 
 impl Default for JoinType {
-    fn default() -> Self { JoinType::Inner }
+    fn default() -> Self {
+        JoinType::Inner
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MergeJoinConfig {
     /// Key field from the left (main) stream
-    pub left_key:  String,
+    pub left_key: String,
     /// Key field from the right (lookup) stream
     pub right_key: String,
     #[serde(default)]
@@ -35,7 +37,9 @@ pub struct MergeJoinConfig {
     pub right_prefix: String,
 }
 
-fn default_prefix() -> String { "right_".into() }
+fn default_prefix() -> String {
+    "right_".into()
+}
 
 /// MergeJoin performs a sort-merge join on two pre-sorted input streams.
 ///
@@ -44,27 +48,32 @@ fn default_prefix() -> String { "right_".into() }
 ///
 /// Both streams MUST be sorted ascending on their respective key fields.
 pub struct MergeJoin {
-    config:        MergeJoinConfig,
-    right_rows:    Vec<Row>,
-    right_pos:     usize,
+    config: MergeJoinConfig,
+    right_rows: Vec<Row>,
+    right_pos: usize,
     output_schema: Option<Arc<RowSchema>>,
 }
 
 impl MergeJoin {
     pub fn new(config: MergeJoinConfig) -> Self {
-        Self { config, right_rows: Vec::new(), right_pos: 0, output_schema: None }
+        Self {
+            config,
+            right_rows: Vec::new(),
+            right_pos: 0,
+            output_schema: None,
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {
-        let config: MergeJoinConfig = serde_json::from_value(value)
-            .map_err(|e| AjisaiError::Config(e.to_string()))?;
+        let config: MergeJoinConfig =
+            serde_json::from_value(value).map_err(|e| AjisaiError::Config(e.to_string()))?;
         Ok(Box::new(Self::new(config)))
     }
 
     /// Pre-load the right-side (inner) stream before execution starts.
     pub fn load_right(&mut self, rows: impl IntoIterator<Item = Row>) {
         self.right_rows = rows.into_iter().collect();
-        self.right_pos  = 0;
+        self.right_pos = 0;
     }
 
     fn build_schema(&self, left: &RowSchema, right: &RowSchema) -> RowSchema {
@@ -92,9 +101,9 @@ impl MergeJoin {
 
     fn key_ord(left_key: &Value, right_key: &Value) -> Ordering {
         match (left_key, right_key) {
-            (Value::Int(a),   Value::Int(b))   => a.cmp(b),
+            (Value::Int(a), Value::Int(b)) => a.cmp(b),
             (Value::Float(a), Value::Float(b)) => a.partial_cmp(b).unwrap_or(Ordering::Equal),
-            (Value::Str(a),   Value::Str(b))   => a.cmp(b),
+            (Value::Str(a), Value::Str(b)) => a.cmp(b),
             (a, b) => a.to_display_string().cmp(&b.to_display_string()),
         }
     }
@@ -102,14 +111,18 @@ impl MergeJoin {
 
 #[async_trait]
 impl Transform for MergeJoin {
-    fn name(&self) -> &str { "MergeJoin" }
+    fn name(&self) -> &str {
+        "MergeJoin"
+    }
 
     fn output_schema(&self, input: &RowSchema) -> Result<RowSchema> {
         // Right schema is unknown at plan time; return left schema as placeholder
         Ok(input.clone())
     }
 
-    fn side_input_count(&self) -> usize { 1 }
+    fn side_input_count(&self) -> usize {
+        1
+    }
 
     async fn load_side_input(&mut self, _idx: usize, rows: Vec<Row>) -> Result<()> {
         self.load_right(rows);
@@ -122,7 +135,8 @@ impl Transform for MergeJoin {
     }
 
     async fn process(&mut self, left_row: Row) -> Result<Vec<Row>> {
-        let left_key = left_row.get(&self.config.left_key)
+        let left_key = left_row
+            .get(&self.config.left_key)
             .cloned()
             .unwrap_or(Value::Null);
 
@@ -152,7 +166,8 @@ impl Transform for MergeJoin {
         let mut scan = self.right_pos;
         while scan < self.right_rows.len() {
             let right_row = &self.right_rows[scan];
-            let rkey = right_row.get(&self.config.right_key)
+            let rkey = right_row
+                .get(&self.config.right_key)
                 .cloned()
                 .unwrap_or(Value::Null);
 
@@ -170,7 +185,9 @@ impl Transform for MergeJoin {
                     scan += 1;
                 }
                 Ordering::Less => break, // right is now ahead of left
-                Ordering::Greater => { scan += 1; } // shouldn't happen if sorted
+                Ordering::Greater => {
+                    scan += 1;
+                } // shouldn't happen if sorted
             }
         }
 
@@ -186,7 +203,9 @@ impl Transform for MergeJoin {
         Ok(output)
     }
 
-    async fn close(&mut self) -> Result<()> { Ok(()) }
+    async fn close(&mut self) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -201,33 +220,42 @@ mod tests {
     #[tokio::test]
     async fn inner_join() {
         let left_schema = Arc::new(RowSchema::new(vec![
-            Field::new("id",   ValueType::Integer),
+            Field::new("id", ValueType::Integer),
             Field::new("name", ValueType::String),
         ]));
         let right_schema = Arc::new(RowSchema::new(vec![
-            Field::new("id",    ValueType::Integer),
+            Field::new("id", ValueType::Integer),
             Field::new("label", ValueType::String),
         ]));
 
         let config = MergeJoinConfig {
-            left_key:     "id".into(),
-            right_key:    "id".into(),
-            join_type:    JoinType::Inner,
+            left_key: "id".into(),
+            right_key: "id".into(),
+            join_type: JoinType::Inner,
             right_prefix: "r_".into(),
         };
         let mut mj = MergeJoin::new(config);
         mj.load_right(vec![
-            make_row(1, "One",   right_schema.clone()),
-            make_row(2, "Two",   right_schema.clone()),
-            make_row(4, "Four",  right_schema.clone()),
+            make_row(1, "One", right_schema.clone()),
+            make_row(2, "Two", right_schema.clone()),
+            make_row(4, "Four", right_schema.clone()),
         ]);
 
         let ctx = ExecutionContext::new();
         mj.open(&ctx).await.unwrap();
 
-        let out1 = mj.process(make_row(1, "Alice", left_schema.clone())).await.unwrap();
-        let out2 = mj.process(make_row(2, "Bob",   left_schema.clone())).await.unwrap();
-        let out3 = mj.process(make_row(3, "Carol", left_schema.clone())).await.unwrap(); // no match
+        let out1 = mj
+            .process(make_row(1, "Alice", left_schema.clone()))
+            .await
+            .unwrap();
+        let out2 = mj
+            .process(make_row(2, "Bob", left_schema.clone()))
+            .await
+            .unwrap();
+        let out3 = mj
+            .process(make_row(3, "Carol", left_schema.clone()))
+            .await
+            .unwrap(); // no match
 
         assert_eq!(out1.len(), 1);
         assert_eq!(out1[0].get("r_label"), Some(&Value::Str("One".into())));
