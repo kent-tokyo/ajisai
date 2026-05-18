@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pipeline>
+  <name>Sample CSV Pipeline</name>
+  <info>
+    <description>CSV読み込み → 年齢フィルタ → CSV書き込み</description>
+  </info>
+  <transform>
+    <name>CSV Input</name>
+    <type>CSVFileInput</type>
+    <filename>tests/fixtures/input.csv</filename>
+    <separator>,</separator>
+    <header>Y</header>
+  </transform>
+  <transform>
+    <name>Filter Adults</name>
+    <type>FilterRows</type>
+  </transform>
+  <transform>
+    <name>CSV Output</name>
+    <type>CSVFileOutput</type>
+    <filename>tests/fixtures/output.csv</filename>
+    <separator>,</separator>
+    <header>Y</header>
+  </transform>
+  <order>
+    <hop>
+      <from>CSV Input</from>
+      <to>Filter Adults</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Filter Adults</from>
+      <to>CSV Output</to>
+      <enabled>Y</enabled>
+    </hop>
+  </order>
+</pipeline>

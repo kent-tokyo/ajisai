@@ -1,0 +1,39 @@
+en:
+  menu:
+    file: "File"
+    new: "New Pipeline"
+    open_hpl: "Open .hpl..."
+    save_json: "Save as JSON..."
+    save_hpl: "Save as .hpl..."
+    pipeline: "Pipeline"
+    run: "Run"
+    validate: "Validate"
+    clear: "Clear Canvas"
+    language: "Language"
+  panel:
+    transforms: "Transforms"
+    properties: "Properties"
+    log: "Log"
+    log_clear: "Clear"
+  prop:
+    name: "Name:"
+    config: "Config (JSON):"
+    delete: "Delete node"
+    no_selection: "Select a node to edit its properties."
+  status:
+    running: "Running..."
+    nodes: "%{n} nodes  %{e} edges  %{z}%"
+  canvas:
+    hint: "Click palette to add  |  Drag output port to connect  |  Right-click to delete  |  Scroll to zoom  |  Alt+drag to pan"
+  log:
+    added: "Added node: %{node_type}"
+    validate_empty: "[ERROR] Pipeline has no nodes."
+    validate_ok: "[OK] Pipeline '%{name}': %{nodes} nodes, %{edges} edges — structure looks valid."
+    run_start: "Running pipeline '%{name}'..."
+    run_empty: "[ERROR] Pipeline has no nodes."
+    run_ok: "[OK] Pipeline '%{name}' completed in %{ms}ms"
+    run_error: "[ERROR] %{error}"
+    open_ok: "Opened: %{path}"
+    open_error: "[ERROR] %{error}"
+    save_ok: "Saved: %{path}"
+    save_error: "[ERROR] Save: %{error}"

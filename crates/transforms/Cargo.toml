@@ -1,0 +1,21 @@
+[package]
+name    = "ajisai-transforms"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ajisai-core = { workspace = true }
+thiserror   = { workspace = true }
+serde       = { workspace = true }
+serde_json  = { workspace = true }
+tokio       = { workspace = true }
+async-trait = { workspace = true }
+rayon       = { workspace = true }
+tracing     = { workspace = true }
+csv         = "1"
+sqlx        = { version = "0.8", features = ["runtime-tokio", "sqlite", "postgres", "mysql", "macros"], optional = true }
+
+[features]
+default = ["db"]
+db      = ["dep:sqlx"]

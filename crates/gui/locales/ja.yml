@@ -1,0 +1,39 @@
+ja:
+  menu:
+    file: "ファイル"
+    new: "新規パイプライン"
+    open_hpl: ".hpl を開く..."
+    save_json: "JSON で保存..."
+    save_hpl: ".hpl で保存..."
+    pipeline: "パイプライン"
+    run: "実行"
+    validate: "検証"
+    clear: "キャンバスをクリア"
+    language: "言語"
+  panel:
+    transforms: "Transform"
+    properties: "プロパティ"
+    log: "ログ"
+    log_clear: "クリア"
+  prop:
+    name: "名前:"
+    config: "設定 (JSON):"
+    delete: "ノードを削除"
+    no_selection: "ノードを選択するとプロパティを編集できます。"
+  status:
+    running: "実行中..."
+    nodes: "%{n} ノード  %{e} エッジ  %{z}%"
+  canvas:
+    hint: "パレットをクリックして追加  |  出力ポートをドラッグして接続  |  右クリックで削除  |  スクロールでズーム  |  Alt+ドラッグでパン"
+  log:
+    added: "ノードを追加: %{node_type}"
+    validate_empty: "[ERROR] パイプラインにノードがありません。"
+    validate_ok: "[OK] パイプライン '%{name}': %{nodes} ノード, %{edges} エッジ — 構造は有効です。"
+    run_start: "パイプライン '%{name}' を実行中..."
+    run_empty: "[ERROR] パイプラインにノードがありません。"
+    run_ok: "[OK] パイプライン '%{name}' が %{ms}ms で完了しました"
+    run_error: "[ERROR] %{error}"
+    open_ok: "開きました: %{path}"
+    open_error: "[ERROR] %{error}"
+    save_ok: "保存しました: %{path}"
+    save_error: "[ERROR] 保存失敗: %{error}"

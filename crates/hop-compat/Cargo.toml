@@ -1,0 +1,15 @@
+[package]
+name    = "ajisai-hop-compat"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ajisai-core = { workspace = true }
+thiserror   = { workspace = true }
+serde       = { workspace = true }
+serde_json  = { workspace = true }
+quick-xml   = { version = "0.37", features = ["serialize"] }
+ajisai-transforms = { workspace = true }
+async-trait = { workspace = true }
+tokio       = { workspace = true }

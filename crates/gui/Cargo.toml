@@ -1,0 +1,26 @@
+[package]
+name    = "ajisai-gui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "ajisai-gui"
+path = "src/main.rs"
+
+[dependencies]
+ajisai-core       = { workspace = true }
+ajisai-transforms = { workspace = true }
+ajisai-hop-compat = { workspace = true }
+tokio             = { workspace = true }
+serde             = { workspace = true }
+serde_json        = { workspace = true }
+tracing           = { workspace = true }
+tracing-subscriber = { workspace = true }
+rust-i18n         = { workspace = true }
+eframe            = { version = "0.31", features = ["default_fonts"] }
+egui              = "0.31"
+rfd               = { version = "0.15", optional = true }
+
+[features]
+rfd = ["dep:rfd"]

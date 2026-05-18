@@ -1,0 +1,21 @@
+[package]
+name    = "ajisai-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "ajisai-cli"
+path = "src/main.rs"
+
+[dependencies]
+ajisai-core       = { workspace = true }
+ajisai-transforms = { workspace = true }
+ajisai-hop-compat = { workspace = true }
+clap              = { workspace = true }
+tokio             = { workspace = true }
+tracing           = { workspace = true }
+tracing-subscriber = { workspace = true }
+rust-i18n         = { workspace = true }
+anyhow            = "1"
+indicatif         = "0.17"

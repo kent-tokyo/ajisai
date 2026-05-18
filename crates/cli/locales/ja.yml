@@ -1,0 +1,21 @@
+ja:
+  run:
+    start: "パイプライン実行中: %{name}"
+    nodes: "%{count} ノードを実行中..."
+    success: "パイプライン '%{name}' 完了 (%{ms}ms)"
+    error: "パイプライン失敗: %{error}"
+  validate:
+    ok: "パイプライン '%{name}' は有効です (%{nodes} ノード, %{hops} ホップ)"
+    nodes_header: "ノード一覧:"
+    hops_header: "ホップ一覧:"
+    error: "検証失敗: %{error}"
+  list:
+    header: "利用可能な Transform (%{count} 件):"
+  workflow:
+    start: "ワークフロー実行中: %{name}"
+    success: "ワークフロー '%{name}' 完了 (%{ms}ms)"
+    error: "ワークフロー失敗: %{error}"
+  error:
+    file_not_found: "ファイルが見つかりません: %{path}"
+    unsupported_format: "非対応ファイル形式 (.hpl または .hwf が必要): %{path}"
+    invalid_env: "警告: 無効な --env 値を無視しました (KEY=VALUE 形式が必要): %{value}"

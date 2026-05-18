@@ -1,0 +1,38 @@
+[workspace]
+members = [
+    "crates/core",
+    "crates/transforms",
+    "crates/hop-compat",
+    "crates/cli",
+    "crates/gui",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+ajisai-core       = { path = "crates/core" }
+ajisai-transforms = { path = "crates/transforms" }
+ajisai-hop-compat = { path = "crates/hop-compat" }
+
+thiserror  = "2"
+serde      = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio      = { version = "1", features = ["rt-multi-thread", "macros", "sync", "fs", "io-util"] }
+rayon      = "1"
+clap       = { version = "4", features = ["derive"] }
+async-trait = "0.1"
+tracing    = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+chrono     = { version = "0.4", features = ["serde"] }
+rust-i18n  = "4"
+
+[profile.release]
+opt-level     = 3
+lto           = true
+codegen-units = 1
+strip         = true
+panic         = "abort"
