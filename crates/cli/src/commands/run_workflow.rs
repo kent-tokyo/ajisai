@@ -23,7 +23,8 @@ pub async fn run_workflow(workflow_path: PathBuf, env_vars: Vec<String>) -> anyh
             )
         );
     }
-    if workflow_path.extension().and_then(|e| e.to_str()) != Some("hwf") {
+    let wf_ext = workflow_path.extension().and_then(|e| e.to_str()).unwrap_or("");
+    if !matches!(wf_ext, "hwf" | "kjb") {
         anyhow::bail!(
             "{}",
             t!(

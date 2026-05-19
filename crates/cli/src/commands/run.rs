@@ -32,7 +32,7 @@ pub async fn run(pipeline_path: PathBuf, env_vars: Vec<String>) -> anyhow::Resul
         .extension()
         .and_then(|e| e.to_str())
         .unwrap_or("");
-    if ext != "hpl" {
+    if !matches!(ext, "hpl" | "ktr" | "dtsx") {
         anyhow::bail!(
             "{}",
             t!(
