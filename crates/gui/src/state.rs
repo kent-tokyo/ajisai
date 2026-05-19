@@ -23,6 +23,11 @@ pub const TRANSFORM_CATEGORIES: &[(&str, &[(&str, &str)])] = &[
             ("AddConstants", "Add Constants"),
             ("CalculatorStep", "Calculator"),
             ("Deduplicate", "Deduplicate"),
+            ("IfNull", "If Null"),
+            ("StringOperations", "String Operations"),
+            ("ReplaceInString", "Replace In String"),
+            ("ConcatFields", "Concat Fields"),
+            ("SplitFieldToRows", "Split Field To Rows"),
         ],
     ),
     (
@@ -52,6 +57,11 @@ pub const TRANSFORM_TYPES: &[(&str, &str)] = &[
     ("MergeJoin", "Merge Join"),
     ("Deduplicate", "Deduplicate"),
     ("DatabaseLookup", "DB Lookup"),
+    ("IfNull", "If Null"),
+    ("StringOperations", "String Operations"),
+    ("ReplaceInString", "Replace In String"),
+    ("ConcatFields", "Concat Fields"),
+    ("SplitFieldToRows", "Split Field To Rows"),
 ];
 
 /// Execution status of a node, shown as a colored dot overlay

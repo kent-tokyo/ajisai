@@ -107,6 +107,33 @@ pub fn show_config_form(
             changed |= str_row(ui, "Key field", config, "key_field");
             changed |= str_list_row(ui, "Return fields (one/line)", config, "return_fields");
         }
+        "IfNull" => {
+            changed |= if_null_editor(ui, config);
+        }
+        "StringOperations" => {
+            ui.label(
+                egui::RichText::new(
+                    "Edit operations as JSON:\n[{\"field\":\"f\",\"op\":\"trim\"}]",
+                )
+                .weak()
+                .size(11.0),
+            );
+            changed |= json_fallback(ui, config, 8, node_id, json_buf);
+        }
+        "ReplaceInString" => {
+            changed |= replace_in_string_editor(ui, config);
+        }
+        "ConcatFields" => {
+            changed |= str_list_row(ui, "Fields (one per line)", config, "fields");
+            changed |= str_row(ui, "Separator", config, "separator");
+            changed |= str_row(ui, "Output field", config, "output_field");
+        }
+        "SplitFieldToRows" => {
+            changed |= str_row(ui, "Source field", config, "field");
+            changed |= str_row(ui, "Delimiter", config, "delimiter");
+            changed |= str_row(ui, "Output field", config, "output_field");
+            changed |= bool_row(ui, "Trim tokens", config, "trim");
+        }
         _ => {
             changed |= json_fallback(ui, config, 8, node_id, json_buf);
         }
@@ -418,6 +445,188 @@ fn const_fields_editor(ui: &mut Ui, config: &mut Value) -> bool {
             .map(|(n, v, t)| serde_json::json!({ "name": n, "value": v, "type": t }))
             .collect();
         obj.insert("fields".to_owned(), Value::Array(arr));
+    }
+
+    changed
+}
+
+/// Dynamic list editor for IfNull replacements
+fn if_null_editor(ui: &mut Ui, config: &mut Value) -> bool {
+    let obj = config.as_object_mut().unwrap();
+
+    let mut items: Vec<(String, String)> = obj
+        .get("replacements")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .map(|r| {
+                    let field = r
+                        .get("field")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_owned();
+                    let default_value = r
+                        .get("default_value")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_owned();
+                    (field, default_value)
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    ui.label(egui::RichText::new("Null replacements").size(11.0));
+
+    let mut changed = false;
+    let mut to_remove: Option<usize> = None;
+
+    for (i, (field, default)) in items.iter_mut().enumerate() {
+        ui.horizontal(|ui| {
+            if ui
+                .add(
+                    egui::TextEdit::singleline(field)
+                        .font(egui::FontId::monospace(11.0))
+                        .hint_text("field")
+                        .desired_width(100.0),
+                )
+                .changed()
+            {
+                changed = true;
+            }
+            if ui
+                .add(
+                    egui::TextEdit::singleline(default)
+                        .font(egui::FontId::monospace(11.0))
+                        .hint_text("default")
+                        .desired_width(100.0),
+                )
+                .changed()
+            {
+                changed = true;
+            }
+            if ui.small_button("−").clicked() {
+                to_remove = Some(i);
+                changed = true;
+            }
+        });
+    }
+
+    if let Some(i) = to_remove {
+        items.remove(i);
+    }
+
+    if ui.small_button("＋ Add").clicked() {
+        items.push(("field".to_owned(), "".to_owned()));
+        changed = true;
+    }
+
+    if changed {
+        let arr: Vec<Value> = items
+            .iter()
+            .map(|(f, d)| serde_json::json!({ "field": f, "default_value": d }))
+            .collect();
+        obj.insert("replacements".to_owned(), Value::Array(arr));
+    }
+
+    changed
+}
+
+/// Dynamic list editor for ReplaceInString replacements
+fn replace_in_string_editor(ui: &mut Ui, config: &mut Value) -> bool {
+    let obj = config.as_object_mut().unwrap();
+
+    let mut items: Vec<(String, String, String)> = obj
+        .get("replacements")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .map(|r| {
+                    let field = r
+                        .get("field")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_owned();
+                    let search = r
+                        .get("search")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_owned();
+                    let replace = r
+                        .get("replace_with")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_owned();
+                    (field, search, replace)
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    ui.label(egui::RichText::new("Replacements").size(11.0));
+
+    let mut changed = false;
+    let mut to_remove: Option<usize> = None;
+
+    for (i, (field, search, replace)) in items.iter_mut().enumerate() {
+        ui.horizontal(|ui| {
+            if ui
+                .add(
+                    egui::TextEdit::singleline(field)
+                        .font(egui::FontId::monospace(11.0))
+                        .hint_text("field")
+                        .desired_width(70.0),
+                )
+                .changed()
+            {
+                changed = true;
+            }
+            if ui
+                .add(
+                    egui::TextEdit::singleline(search)
+                        .font(egui::FontId::monospace(11.0))
+                        .hint_text("search")
+                        .desired_width(70.0),
+                )
+                .changed()
+            {
+                changed = true;
+            }
+            if ui
+                .add(
+                    egui::TextEdit::singleline(replace)
+                        .font(egui::FontId::monospace(11.0))
+                        .hint_text("replace")
+                        .desired_width(70.0),
+                )
+                .changed()
+            {
+                changed = true;
+            }
+            if ui.small_button("−").clicked() {
+                to_remove = Some(i);
+                changed = true;
+            }
+        });
+    }
+
+    if let Some(i) = to_remove {
+        items.remove(i);
+    }
+
+    if ui.small_button("＋ Add").clicked() {
+        items.push(("field".to_owned(), "".to_owned(), "".to_owned()));
+        changed = true;
+    }
+
+    if changed {
+        let arr: Vec<Value> = items
+            .iter()
+            .map(|(f, s, r)| {
+                serde_json::json!({ "field": f, "search": s, "replace_with": r })
+            })
+            .collect();
+        obj.insert("replacements".to_owned(), Value::Array(arr));
     }
 
     changed
