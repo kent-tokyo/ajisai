@@ -47,6 +47,12 @@ impl PipelineEngine {
             return Err(AjisaiError::Pipeline("Pipeline has no nodes".into()));
         }
 
+        if order.len() < self.pipeline.nodes.len() {
+            return Err(AjisaiError::Pipeline(
+                "Cycle detected in pipeline graph".into(),
+            ));
+        }
+
         info!(
             "Running pipeline '{}' ({} nodes)",
             self.pipeline.name,
@@ -137,7 +143,9 @@ impl PipelineEngine {
                             for out_row in out_rows {
                                 for tx in &out_senders {
                                     if tx.send(out_row.clone()).await.is_err() {
-                                        debug!("Downstream channel closed");
+                                        return Err(AjisaiError::Pipeline(
+                                            "Downstream channel closed".into(),
+                                        ));
                                     }
                                 }
                             }
@@ -149,7 +157,9 @@ impl PipelineEngine {
                     for out_row in flush_rows {
                         for tx in &out_senders {
                             if tx.send(out_row.clone()).await.is_err() {
-                                debug!("Downstream channel closed after flush");
+                                return Err(AjisaiError::Pipeline(
+                                    "Downstream channel closed".into(),
+                                ));
                             }
                         }
                     }

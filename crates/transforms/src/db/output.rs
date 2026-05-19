@@ -41,6 +41,28 @@ pub struct TableOutput {
     config: TableOutputConfig,
     pool: Option<AnyPool>,
     buffer: Vec<Row>,
+    needs_delete: bool,
+}
+
+/// Mask the password in a connection URL for safe logging.
+fn mask_url_password(url: &str) -> String {
+    if let Some(scheme_end) = url.find("://") {
+        let after_scheme = &url[scheme_end + 3..];
+        if let Some(at_pos) = after_scheme.find('@') {
+            let credentials = &after_scheme[..at_pos];
+            if let Some(colon_pos) = credentials.find(':') {
+                let user = &credentials[..colon_pos];
+                let masked = format!(
+                    "{}://{}:***@{}",
+                    &url[..scheme_end],
+                    user,
+                    &after_scheme[at_pos + 1..]
+                );
+                return masked;
+            }
+        }
+    }
+    url.to_string()
 }
 
 /// Validate that a string is a safe SQL identifier (letters, digits, underscores only;
@@ -76,6 +98,7 @@ impl TableOutput {
             config,
             pool: None,
             buffer: Vec::new(),
+            needs_delete: false,
         }
     }
 
@@ -86,7 +109,7 @@ impl TableOutput {
     }
 
     async fn flush(&mut self) -> Result<()> {
-        if self.buffer.is_empty() {
+        if self.buffer.is_empty() && !self.needs_delete {
             return Ok(());
         }
         let pool = self
@@ -96,54 +119,65 @@ impl TableOutput {
 
         validate_sql_identifier(&self.config.table)?;
 
-        let first = &self.buffer[0];
-        let cols: Vec<&str> = first
-            .schema
-            .fields
-            .iter()
-            .map(|f| f.name.as_str())
-            .collect();
-        for col in &cols {
-            validate_sql_identifier(col)?;
-        }
-        let placeholders: String = (1..=cols.len())
-            .map(|i| format!("${}", i))
-            .collect::<Vec<_>>()
-            .join(", ");
-
-        let verb = match self.config.mode {
-            WriteMode::Insert => "INSERT INTO",
-            WriteMode::Upsert => "INSERT OR REPLACE INTO",
-            WriteMode::Overwrite => "INSERT INTO",
-        };
-
-        let sql = format!(
-            "{} {} ({}) VALUES ({})",
-            verb,
-            self.config.table,
-            cols.join(", "),
-            placeholders
-        );
-
         let mut tx = pool
             .begin()
             .await
             .map_err(|e| AjisaiError::Pipeline(e.to_string()))?;
 
-        for row in self.buffer.drain(..) {
-            let mut q = sqlx::query(&sql);
-            for val in &row.values {
-                q = match val {
-                    Value::Int(n) => q.bind(*n),
-                    Value::Float(f) => q.bind(*f),
-                    Value::Bool(b) => q.bind(*b),
-                    Value::Null => q.bind(Option::<String>::None),
-                    other => q.bind(other.to_display_string()),
-                };
-            }
-            q.execute(&mut *tx)
+        // Execute deferred DELETE inside the transaction on the first flush
+        if self.needs_delete {
+            sqlx::query(&format!("DELETE FROM {}", self.config.table))
+                .execute(&mut *tx)
                 .await
                 .map_err(|e| AjisaiError::Pipeline(e.to_string()))?;
+            self.needs_delete = false;
+        }
+
+        if !self.buffer.is_empty() {
+            let first = &self.buffer[0];
+            let cols: Vec<&str> = first
+                .schema
+                .fields
+                .iter()
+                .map(|f| f.name.as_str())
+                .collect();
+            for col in &cols {
+                validate_sql_identifier(col)?;
+            }
+            let placeholders: String = (1..=cols.len())
+                .map(|i| format!("${}", i))
+                .collect::<Vec<_>>()
+                .join(", ");
+
+            let verb = match self.config.mode {
+                WriteMode::Insert => "INSERT INTO",
+                WriteMode::Upsert => "INSERT OR REPLACE INTO",
+                WriteMode::Overwrite => "INSERT INTO",
+            };
+
+            let sql = format!(
+                "{} {} ({}) VALUES ({})",
+                verb,
+                self.config.table,
+                cols.join(", "),
+                placeholders
+            );
+
+            for row in self.buffer.drain(..) {
+                let mut q = sqlx::query(&sql);
+                for val in &row.values {
+                    q = match val {
+                        Value::Int(n) => q.bind(*n),
+                        Value::Float(f) => q.bind(*f),
+                        Value::Bool(b) => q.bind(*b),
+                        Value::Null => q.bind(Option::<String>::None),
+                        other => q.bind(other.to_display_string()),
+                    };
+                }
+                q.execute(&mut *tx)
+                    .await
+                    .map_err(|e| AjisaiError::Pipeline(e.to_string()))?;
+            }
         }
 
         tx.commit()
@@ -166,7 +200,17 @@ impl Transform for TableOutput {
 
     async fn open(&mut self, ctx: &ExecutionContext) -> Result<()> {
         let url = ctx.resolve(&self.config.connection_url);
-        debug!("TableOutput connecting to '{}'", url);
+
+        // Upsert mode is only supported for SQLite
+        if matches!(self.config.mode, WriteMode::Upsert) {
+            if !url.to_lowercase().starts_with("sqlite") {
+                return Err(AjisaiError::Config(
+                    "Upsert is only supported for SQLite databases".into(),
+                ));
+            }
+        }
+
+        debug!("TableOutput connecting to '{}'", mask_url_password(&url));
         sqlx::any::install_default_drivers();
         let pool = AnyPool::connect(&url)
             .await
@@ -174,10 +218,7 @@ impl Transform for TableOutput {
 
         if matches!(self.config.mode, WriteMode::Overwrite) {
             validate_sql_identifier(&self.config.table)?;
-            sqlx::query(&format!("DELETE FROM {}", self.config.table))
-                .execute(&pool)
-                .await
-                .map_err(|e| AjisaiError::Pipeline(e.to_string()))?;
+            self.needs_delete = true;
         }
 
         self.pool = Some(pool);

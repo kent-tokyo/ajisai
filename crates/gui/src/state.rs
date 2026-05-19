@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 /// Transforms grouped by category for the palette
 pub const TRANSFORM_CATEGORIES: &[(&str, &[(&str, &str)])] = &[
@@ -66,7 +66,7 @@ pub enum NodeStatus {
 /// Snapshot-based undo/redo stack (max 50 entries)
 #[derive(Debug, Default)]
 pub struct UndoStack {
-    past: Vec<PipelineState>,
+    past: VecDeque<PipelineState>,
     future: Vec<PipelineState>,
 }
 
@@ -74,15 +74,15 @@ impl UndoStack {
     const MAX: usize = 50;
 
     pub fn push(&mut self, state: PipelineState) {
-        self.past.push(state);
+        self.past.push_back(state);
         if self.past.len() > Self::MAX {
-            self.past.remove(0);
+            self.past.pop_front();
         }
         self.future.clear();
     }
 
     pub fn undo(&mut self, current: PipelineState) -> Option<PipelineState> {
-        self.past.pop().map(|prev| {
+        self.past.pop_back().map(|prev| {
             self.future.push(current);
             prev
         })
@@ -90,7 +90,7 @@ impl UndoStack {
 
     pub fn redo(&mut self, current: PipelineState) -> Option<PipelineState> {
         self.future.pop().map(|next| {
-            self.past.push(current);
+            self.past.push_back(current);
             next
         })
     }
@@ -221,6 +221,8 @@ pub struct UiState {
     pub node_status: HashMap<String, NodeStatus>,
     /// Category names that are currently collapsed in the palette
     pub collapsed_categories: HashSet<String>,
+    /// Persistent raw-JSON edit buffer for the json_fallback editor, keyed by node id
+    pub json_edit_buf: HashMap<String, String>,
 }
 
 impl UiState {

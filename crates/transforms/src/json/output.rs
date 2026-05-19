@@ -41,6 +41,7 @@ pub struct JsonFileOutput {
     buffer: Vec<serde_json::Map<String, serde_json::Value>>,
     file: Option<std::fs::File>,
     started: bool,
+    resolved_filename: Option<String>,
 }
 
 impl JsonFileOutput {
@@ -50,6 +51,7 @@ impl JsonFileOutput {
             buffer: Vec::new(),
             file: None,
             started: false,
+            resolved_filename: None,
         }
     }
 
@@ -90,6 +92,17 @@ impl Transform for JsonFileOutput {
 
     async fn open(&mut self, ctx: &ExecutionContext) -> Result<()> {
         let filename = ctx.resolve(&self.config.filename);
+
+        // Reject path traversal attempts
+        if std::path::Path::new(&filename)
+            .components()
+            .any(|c| c == std::path::Component::ParentDir)
+        {
+            return Err(AjisaiError::Config("Path traversal not allowed".into()));
+        }
+
+        self.resolved_filename = Some(filename.clone());
+
         let f = std::fs::File::create(&filename).map_err(AjisaiError::Io)?;
         self.file = Some(f);
         self.started = false;
@@ -140,7 +153,10 @@ impl Transform for JsonFileOutput {
 
                 // Overwrite with the full array (we wrote "[" in open())
                 // Re-open and write the complete JSON
-                let filename = self.config.filename.clone();
+                let filename = self
+                    .resolved_filename
+                    .clone()
+                    .unwrap_or_else(|| self.config.filename.clone());
                 drop(self.file.take());
                 std::fs::write(&filename, json).map_err(AjisaiError::Io)?;
             } else {

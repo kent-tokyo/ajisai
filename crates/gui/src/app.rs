@@ -45,6 +45,7 @@ impl AjisaiApp {
         if let Some(prev) = self.undo.undo(self.pipeline.clone()) {
             self.pipeline = prev;
             self.ui.selected_node = None;
+            self.ui.node_status.clear();
         }
     }
 
@@ -52,6 +53,7 @@ impl AjisaiApp {
         if let Some(next) = self.undo.redo(self.pipeline.clone()) {
             self.pipeline = next;
             self.ui.selected_node = None;
+            self.ui.node_status.clear();
         }
     }
 
@@ -68,30 +70,37 @@ impl AjisaiApp {
             if let Some(sel_id) = self.ui.selected_node.clone() {
                 self.snapshot();
                 self.pipeline.remove_node(&sel_id);
+                self.ui.json_edit_buf.remove(&sel_id);
                 self.ui.selected_node = None;
             }
         }
 
-        // Ctrl+Z → undo
-        if ctx.input(|i| i.key_pressed(egui::Key::Z) && i.modifiers.ctrl && !i.modifiers.shift) {
+        // Ctrl+Z / ⌘+Z → undo
+        if ctx.input(|i| {
+            i.key_pressed(egui::Key::Z)
+                && (i.modifiers.ctrl || i.modifiers.command)
+                && !i.modifiers.shift
+        }) {
             self.do_undo();
         }
 
-        // Ctrl+Y or Ctrl+Shift+Z → redo
+        // Ctrl+Y / ⌘+Y or Ctrl+Shift+Z / ⌘+Shift+Z → redo
         if ctx.input(|i| {
-            (i.key_pressed(egui::Key::Y) && i.modifiers.ctrl)
-                || (i.key_pressed(egui::Key::Z) && i.modifiers.ctrl && i.modifiers.shift)
+            (i.key_pressed(egui::Key::Y) && (i.modifiers.ctrl || i.modifiers.command))
+                || (i.key_pressed(egui::Key::Z)
+                    && (i.modifiers.ctrl || i.modifiers.command)
+                    && i.modifiers.shift)
         }) {
             self.do_redo();
         }
 
-        // Ctrl+D → duplicate selected node
-        if ctx.input(|i| i.key_pressed(egui::Key::D) && i.modifiers.ctrl) {
+        // Ctrl+D / ⌘+D → duplicate selected node
+        if ctx.input(|i| i.key_pressed(egui::Key::D) && (i.modifiers.ctrl || i.modifiers.command)) {
             self.duplicate_selected();
         }
 
-        // Ctrl+S → save (overwrite current file, or open save dialog)
-        if ctx.input(|i| i.key_pressed(egui::Key::S) && i.modifiers.ctrl) {
+        // Ctrl+S / ⌘+S → save (overwrite current file, or open save dialog)
+        if ctx.input(|i| i.key_pressed(egui::Key::S) && (i.modifiers.ctrl || i.modifiers.command)) {
             if self.ui.current_file.is_some() {
                 self.save_current_file();
             } else {
@@ -169,6 +178,7 @@ impl AjisaiApp {
                         self.ui.selected_node = None;
                         self.ui.log_lines.clear();
                         self.ui.node_status.clear();
+                        self.ui.json_edit_buf.clear();
                         ui.close_menu();
                     }
                     if ui.button(t!("menu.open_hpl")).clicked() {
@@ -221,6 +231,7 @@ impl AjisaiApp {
                         self.pipeline.edges.clear();
                         self.ui.selected_node = None;
                         self.ui.node_status.clear();
+                        self.ui.json_edit_buf.clear();
                         ui.close_menu();
                     }
                 });
@@ -357,7 +368,13 @@ impl AjisaiApp {
                         ui.label(t!("prop.config"));
                         ui.add_space(4.0);
                         if let Some(node) = self.pipeline.node_mut(&sel_id) {
-                            config_form::show_config_form(ui, &type_name, &mut node.config);
+                            config_form::show_config_form(
+                                ui,
+                                &type_name,
+                                &mut node.config,
+                                &sel_id,
+                                &mut self.ui.json_edit_buf,
+                            );
                         }
 
                         ui.add_space(8.0);
@@ -431,6 +448,7 @@ impl AjisaiApp {
                                 let id = sel_id.clone();
                                 self.snapshot();
                                 self.pipeline.remove_node(&id);
+                                self.ui.json_edit_buf.remove(&id);
                                 self.ui.selected_node = None;
                             }
                         });
@@ -532,8 +550,9 @@ impl AjisaiApp {
                     self.canvas_offset += canvas_resp.drag_delta();
                 }
 
-                if canvas_resp.clicked() && self.ui.connecting_from.is_none() {
+                if canvas_resp.clicked() {
                     self.ui.selected_node = None;
+                    self.ui.connecting_from = None;
                 }
                 if canvas_resp.secondary_clicked() {
                     self.ui.connecting_from = None;
@@ -564,6 +583,11 @@ impl AjisaiApp {
                             && !interaction.output_clicked
                             && !interaction.input_clicked
                         {
+                            // Snapshot before changing selection so that text
+                            // edits made in the properties panel can be undone.
+                            if self.ui.selected_node.as_deref() != Some(node_id.as_str()) {
+                                self.snapshot();
+                            }
                             self.ui.selected_node = Some(node_id.clone());
                             self.ui.connecting_from = None;
                         }
@@ -583,6 +607,7 @@ impl AjisaiApp {
                         if interaction.right_clicked {
                             self.snapshot();
                             self.pipeline.remove_node(node_id);
+                            self.ui.json_edit_buf.remove(node_id.as_str());
                             if self.ui.selected_node.as_deref() == Some(node_id) {
                                 self.ui.selected_node = None;
                             }
@@ -656,6 +681,54 @@ impl AjisaiApp {
             )
             .to_string(),
         );
+
+        // Check for isolated nodes (no input AND no output edges)
+        for node in &self.pipeline.nodes {
+            let has_connection = self
+                .pipeline
+                .edges
+                .iter()
+                .any(|e| e.from == node.id || e.to == node.id);
+            if !has_connection {
+                self.ui
+                    .log(format!("[WARN] Node '{}' has no connections", node.label));
+            }
+        }
+
+        // Cycle detection via Kahn's algorithm (topological sort)
+        let mut in_degree: std::collections::HashMap<&str, usize> = self
+            .pipeline
+            .nodes
+            .iter()
+            .map(|n| (n.id.as_str(), 0usize))
+            .collect();
+        for edge in &self.pipeline.edges {
+            if let Some(deg) = in_degree.get_mut(edge.to.as_str()) {
+                *deg += 1;
+            }
+        }
+        let mut queue: std::collections::VecDeque<&str> = in_degree
+            .iter()
+            .filter(|(_, &d)| d == 0)
+            .map(|(&id, _)| id)
+            .collect();
+        let mut processed = 0usize;
+        while let Some(id) = queue.pop_front() {
+            processed += 1;
+            for edge in &self.pipeline.edges {
+                if edge.from == id {
+                    if let Some(deg) = in_degree.get_mut(edge.to.as_str()) {
+                        *deg -= 1;
+                        if *deg == 0 {
+                            queue.push_back(edge.to.as_str());
+                        }
+                    }
+                }
+            }
+        }
+        if processed < self.pipeline.nodes.len() {
+            self.ui.log("[ERROR] Pipeline contains a cycle.".to_owned());
+        }
     }
 
     fn run_pipeline(&mut self, ctx: &egui::Context) {
@@ -737,6 +810,7 @@ impl AjisaiApp {
                     self.snapshot();
                     self.pipeline = ps;
                     self.ui.current_file = Some(path.clone());
+                    self.ui.json_edit_buf.clear();
                     let path_str = path.display().to_string();
                     self.ui
                         .log(t!("log.open_ok", path = path_str.as_str()).to_string());
@@ -822,13 +896,29 @@ impl AjisaiApp {
             })
             .collect();
 
+        // Build id → label map so hop elements reference display names
+        let id_to_label: std::collections::HashMap<&str, &str> = self
+            .pipeline
+            .nodes
+            .iter()
+            .map(|n| (n.id.as_str(), n.label.as_str()))
+            .collect();
+
         let order = self
             .pipeline
             .edges
             .iter()
             .map(|e| HopHop {
-                from: e.from.clone(),
-                to: e.to.clone(),
+                from: id_to_label
+                    .get(e.from.as_str())
+                    .copied()
+                    .unwrap_or(e.from.as_str())
+                    .to_owned(),
+                to: id_to_label
+                    .get(e.to.as_str())
+                    .copied()
+                    .unwrap_or(e.to.as_str())
+                    .to_owned(),
                 enabled: Some(true),
             })
             .collect();

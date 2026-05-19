@@ -63,6 +63,14 @@ impl Transform for CsvFileOutput {
         let filename = ctx.resolve(&self.config.filename);
         debug!("CsvFileOutput opening '{}'", filename);
 
+        // Reject path traversal attempts
+        if std::path::Path::new(&filename)
+            .components()
+            .any(|c| c == std::path::Component::ParentDir)
+        {
+            return Err(AjisaiError::Config("Path traversal not allowed".into()));
+        }
+
         let file = if self.config.append {
             std::fs::OpenOptions::new()
                 .create(true)
@@ -87,7 +95,9 @@ impl Transform for CsvFileOutput {
             .as_ref()
             .ok_or_else(|| AjisaiError::Pipeline("CsvFileOutput not opened".into()))?;
 
-        let mut writer = writer_mutex.lock().unwrap();
+        let mut writer = writer_mutex
+            .lock()
+            .map_err(|_| AjisaiError::Pipeline("Writer lock poisoned".into()))?;
 
         if self.config.header_present && !self.headers_written {
             let headers: Vec<&str> = row.schema.fields.iter().map(|f| f.name.as_str()).collect();

@@ -51,6 +51,12 @@ pub struct MergeJoin {
     output_schema: Option<Arc<RowSchema>>,
     /// Left-side schema, captured from the first processed row.
     left_schema: Option<Arc<RowSchema>>,
+    /// One-past-end of the last matched right group (for N:M join support).
+    right_match_end: usize,
+    /// The key of the last processed left row (for N:M join support).
+    last_left_key: Option<Value>,
+    /// Index where the current group of matching right rows begins.
+    group_start: usize,
 }
 
 impl MergeJoin {
@@ -61,6 +67,9 @@ impl MergeJoin {
             right_pos: 0,
             output_schema: None,
             left_schema: None,
+            right_match_end: 0,
+            last_left_key: None,
+            group_start: 0,
         }
     }
 
@@ -156,6 +165,9 @@ impl Transform for MergeJoin {
         self.right_pos = 0;
         self.left_schema = None;
         self.output_schema = None;
+        self.right_match_end = 0;
+        self.last_left_key = None;
+        self.group_start = 0;
         Ok(())
     }
 
@@ -173,33 +185,42 @@ impl Transform for MergeJoin {
 
         let mut output: Vec<Row> = Vec::new();
 
-        // Advance right pointer past rows whose key < left_key.
-        // For RightOuter / Full, emit those unmatched right rows now.
-        while self.right_pos < self.right_rows.len() {
-            let rkey = self.right_rows[self.right_pos]
-                .get(&self.config.right_key)
-                .cloned()
-                .unwrap_or(Value::Null);
-            if Self::key_ord(&rkey, &left_key) == Ordering::Less {
-                if matches!(self.config.join_type, JoinType::RightOuter | JoinType::Full) {
-                    let right_schema = self.right_rows[self.right_pos].schema.clone();
-                    let right_values = self.right_rows[self.right_pos].values.clone();
-                    let schema = self.ensure_schema(&left_schema, &right_schema);
-                    output.push(Self::right_only_row(
-                        left_schema.fields.len(),
-                        right_values,
-                        schema,
-                    ));
-                }
-                self.right_pos += 1;
-            } else {
-                break;
-            }
-        }
+        if Some(&left_key) != self.last_left_key.as_ref() {
+            // New left key: advance right_pos past the previous matched group,
+            // then run the advance loop to skip rows < left_key (emitting
+            // unmatched right rows for RightOuter / Full joins).
+            self.right_pos = self.right_match_end;
 
-        // Collect all right rows matching left_key
+            while self.right_pos < self.right_rows.len() {
+                let rkey = self.right_rows[self.right_pos]
+                    .get(&self.config.right_key)
+                    .cloned()
+                    .unwrap_or(Value::Null);
+                if Self::key_ord(&rkey, &left_key) == Ordering::Less {
+                    if matches!(self.config.join_type, JoinType::RightOuter | JoinType::Full) {
+                        let right_schema = self.right_rows[self.right_pos].schema.clone();
+                        let right_values = self.right_rows[self.right_pos].values.clone();
+                        let schema = self.ensure_schema(&left_schema, &right_schema);
+                        output.push(Self::right_only_row(
+                            left_schema.fields.len(),
+                            right_values,
+                            schema,
+                        ));
+                    }
+                    self.right_pos += 1;
+                } else {
+                    break;
+                }
+            }
+
+            // Mark the start of the potential match group for this new key
+            self.group_start = self.right_pos;
+        }
+        // If Same key as previous left row: re-scan from group_start (no advance loop needed)
+
+        // Collect all right rows matching left_key, scanning from group_start
         let mut matched = false;
-        let mut scan = self.right_pos;
+        let mut scan = self.group_start;
         while scan < self.right_rows.len() {
             let right_row = &self.right_rows[scan];
             let rkey = right_row
@@ -223,11 +244,10 @@ impl Transform for MergeJoin {
                 }
             }
         }
-        // Advance right_pos past the matched group so the next left row's
-        // advance loop does not re-emit already-matched right rows.
-        if matched {
-            self.right_pos = scan;
-        }
+
+        // Track the end of this group and remember the key for next call
+        self.right_match_end = scan;
+        self.last_left_key = Some(left_key.clone());
 
         // Left / Full outer: emit left row with null right side if no match
         if !matched && matches!(self.config.join_type, JoinType::LeftOuter | JoinType::Full) {
@@ -249,17 +269,19 @@ impl Transform for MergeJoin {
         let Some(left_schema) = self.left_schema.clone() else {
             return Ok(vec![]);
         };
+        // Start from the furthest position we've advanced to (account for N:M joins)
+        let mut pos = self.right_pos.max(self.right_match_end);
         let mut output = Vec::new();
-        while self.right_pos < self.right_rows.len() {
-            let right_schema = self.right_rows[self.right_pos].schema.clone();
-            let right_values = self.right_rows[self.right_pos].values.clone();
+        while pos < self.right_rows.len() {
+            let right_schema = self.right_rows[pos].schema.clone();
+            let right_values = self.right_rows[pos].values.clone();
             let schema = self.ensure_schema(&left_schema, &right_schema);
             output.push(Self::right_only_row(
                 left_schema.fields.len(),
                 right_values,
                 schema,
             ));
-            self.right_pos += 1;
+            pos += 1;
         }
         Ok(output)
     }
@@ -365,6 +387,30 @@ mod tests {
         assert_eq!(out[1].get("r_label"), Some(&Value::Str("Two".into())));
         assert_eq!(out[2].get("name"), Some(&Value::Null));
         assert_eq!(out[2].get("r_label"), Some(&Value::Str("Four".into())));
+    }
+
+    #[tokio::test]
+    async fn duplicate_left_keys() {
+        // N:M join: 2 left rows with id=1, 2 right rows with id=1
+        // should produce 4 output rows (2x2 cross product for matching key)
+        let out = run_join(
+            JoinType::Inner,
+            vec![lrow(1, "Alice"), lrow(1, "Alex"), lrow(2, "Bob")],
+            vec![rrow(1, "One"), rrow(1, "Uno"), rrow(2, "Two")],
+        )
+        .await;
+        // Expected: (Alice,One), (Alice,Uno), (Alex,One), (Alex,Uno), (Bob,Two)
+        assert_eq!(out.len(), 5, "got: {:?}", out);
+        assert_eq!(out[0].get("name"), Some(&Value::Str("Alice".into())));
+        assert_eq!(out[0].get("r_label"), Some(&Value::Str("One".into())));
+        assert_eq!(out[1].get("name"), Some(&Value::Str("Alice".into())));
+        assert_eq!(out[1].get("r_label"), Some(&Value::Str("Uno".into())));
+        assert_eq!(out[2].get("name"), Some(&Value::Str("Alex".into())));
+        assert_eq!(out[2].get("r_label"), Some(&Value::Str("One".into())));
+        assert_eq!(out[3].get("name"), Some(&Value::Str("Alex".into())));
+        assert_eq!(out[3].get("r_label"), Some(&Value::Str("Uno".into())));
+        assert_eq!(out[4].get("name"), Some(&Value::Str("Bob".into())));
+        assert_eq!(out[4].get("r_label"), Some(&Value::Str("Two".into())));
     }
 
     #[tokio::test]

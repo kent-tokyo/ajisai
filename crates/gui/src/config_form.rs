@@ -1,9 +1,16 @@
 use egui::{ComboBox, Ui};
 use serde_json::{Map, Value};
+use std::collections::HashMap;
 
 /// Show a form-based config editor for the given transform type.
 /// Returns true if the config was modified.
-pub fn show_config_form(ui: &mut Ui, type_name: &str, config: &mut Value) -> bool {
+pub fn show_config_form(
+    ui: &mut Ui,
+    type_name: &str,
+    config: &mut Value,
+    node_id: &str,
+    json_buf: &mut HashMap<String, String>,
+) -> bool {
     if !config.is_object() {
         *config = Value::Object(Map::new());
     }
@@ -65,7 +72,7 @@ pub fn show_config_form(ui: &mut Ui, type_name: &str, config: &mut Value) -> boo
                     .weak()
                     .size(11.0),
             );
-            changed |= json_fallback(ui, config, 8);
+            changed |= json_fallback(ui, config, 8, node_id, json_buf);
         }
         "StreamLookup" => {
             changed |= str_row(ui, "Lookup transform", config, "lookup_transform");
@@ -101,7 +108,7 @@ pub fn show_config_form(ui: &mut Ui, type_name: &str, config: &mut Value) -> boo
             changed |= str_list_row(ui, "Return fields (one/line)", config, "return_fields");
         }
         _ => {
-            changed |= json_fallback(ui, config, 8);
+            changed |= json_fallback(ui, config, 8, node_id, json_buf);
         }
     }
 
@@ -417,17 +424,25 @@ fn const_fields_editor(ui: &mut Ui, config: &mut Value) -> bool {
 }
 
 /// Raw JSON fallback for complex / unknown configs
-fn json_fallback(ui: &mut Ui, config: &mut Value, rows: usize) -> bool {
-    let pretty = serde_json::to_string_pretty(config).unwrap_or_default();
-    let mut buf = pretty;
+fn json_fallback(
+    ui: &mut Ui,
+    config: &mut Value,
+    rows: usize,
+    node_id: &str,
+    json_buf: &mut HashMap<String, String>,
+) -> bool {
+    let current_json = serde_json::to_string_pretty(config).unwrap_or_default();
+    let buf = json_buf
+        .entry(node_id.to_string())
+        .or_insert_with(|| current_json);
     let resp = ui.add(
-        egui::TextEdit::multiline(&mut buf)
+        egui::TextEdit::multiline(buf)
             .font(egui::FontId::monospace(11.0))
             .desired_rows(rows)
             .desired_width(f32::INFINITY),
     );
     if resp.changed() {
-        if let Ok(v) = serde_json::from_str::<Value>(&buf) {
+        if let Ok(v) = serde_json::from_str::<Value>(buf) {
             *config = v;
             return true;
         }

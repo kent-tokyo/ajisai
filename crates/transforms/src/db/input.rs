@@ -23,11 +23,38 @@ pub struct TableInputConfig {
 
 pub struct TableInput {
     config: TableInputConfig,
+    resolved_url: Option<String>,
 }
 
 impl TableInput {
     pub fn new(config: TableInputConfig) -> Self {
-        Self { config }
+        Self {
+            config,
+            resolved_url: None,
+        }
+    }
+
+    /// Mask the password in a connection URL for safe logging.
+    /// Replaces `://user:password@` patterns with `://user:***@`.
+    fn mask_url_password(url: &str) -> String {
+        // Find "://" then look for user:pass@host pattern
+        if let Some(scheme_end) = url.find("://") {
+            let after_scheme = &url[scheme_end + 3..];
+            if let Some(at_pos) = after_scheme.find('@') {
+                let credentials = &after_scheme[..at_pos];
+                if let Some(colon_pos) = credentials.find(':') {
+                    let user = &credentials[..colon_pos];
+                    let masked = format!(
+                        "{}://{}:***@{}",
+                        &url[..scheme_end],
+                        user,
+                        &after_scheme[at_pos + 1..]
+                    );
+                    return masked;
+                }
+            }
+        }
+        url.to_string()
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {
@@ -77,7 +104,8 @@ impl Transform for TableInput {
         Ok(RowSchema::default())
     }
 
-    async fn open(&mut self, _ctx: &ExecutionContext) -> Result<()> {
+    async fn open(&mut self, ctx: &ExecutionContext) -> Result<()> {
+        self.resolved_url = Some(ctx.resolve(&self.config.connection_url));
         Ok(())
     }
     async fn process(&mut self, row: Row) -> Result<Vec<Row>> {
@@ -91,11 +119,15 @@ impl Transform for TableInput {
     }
 
     async fn produce(&mut self, sender: mpsc::Sender<Row>) -> Result<()> {
-        let url = &self.config.connection_url;
-        debug!("TableInput connecting to '{}'", url);
+        let url = self
+            .resolved_url
+            .as_deref()
+            .unwrap_or(&self.config.connection_url)
+            .to_owned();
+        debug!("TableInput connecting to '{}'", Self::mask_url_password(&url));
 
         sqlx::any::install_default_drivers();
-        let pool = AnyPool::connect(url)
+        let pool = AnyPool::connect(&url)
             .await
             .map_err(|e| AjisaiError::Config(format!("DB connect failed: {}", e)))?;
 

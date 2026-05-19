@@ -49,6 +49,7 @@ fn default_type() -> String {
 pub struct JsonFileInput {
     config: JsonFileInputConfig,
     schema: Option<Arc<RowSchema>>,
+    resolved_filename: Option<String>,
 }
 
 impl JsonFileInput {
@@ -56,6 +57,7 @@ impl JsonFileInput {
         Self {
             config,
             schema: None,
+            resolved_filename: None,
         }
     }
 
@@ -148,6 +150,16 @@ impl Transform for JsonFileInput {
         let filename = ctx.resolve(&self.config.filename);
         debug!("JsonFileInput opening '{}'", filename);
 
+        // Reject path traversal attempts
+        if std::path::Path::new(&filename)
+            .components()
+            .any(|c| c == std::path::Component::ParentDir)
+        {
+            return Err(AjisaiError::Config("Path traversal not allowed".into()));
+        }
+
+        self.resolved_filename = Some(filename);
+
         if !self.config.fields.is_empty() {
             let fields: Vec<Field> = self
                 .config
@@ -179,7 +191,11 @@ impl Transform for JsonFileInput {
     }
 
     async fn produce(&mut self, sender: mpsc::Sender<Row>) -> Result<()> {
-        let filename = self.config.filename.clone();
+        let filename = self
+            .resolved_filename
+            .as_deref()
+            .unwrap_or(&self.config.filename)
+            .to_owned();
         let format = self.config.format.clone();
         let schema_hint = self.schema.clone();
 

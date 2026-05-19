@@ -134,7 +134,9 @@ impl Operation {
                 let av = a.resolve(row);
                 let bv = b.resolve(row);
                 match (&av, &bv) {
-                    (Value::Int(x), Value::Int(y)) => Value::Int(x + y),
+                    (Value::Int(x), Value::Int(y)) => {
+                        x.checked_add(*y).map(Value::Int).unwrap_or(Value::Null)
+                    }
                     _ => match (to_f64(&av), to_f64(&bv)) {
                         (Some(x), Some(y)) => Value::Float(x + y),
                         _ => Value::Null,
@@ -145,7 +147,9 @@ impl Operation {
                 let av = a.resolve(row);
                 let bv = b.resolve(row);
                 match (&av, &bv) {
-                    (Value::Int(x), Value::Int(y)) => Value::Int(x - y),
+                    (Value::Int(x), Value::Int(y)) => {
+                        x.checked_sub(*y).map(Value::Int).unwrap_or(Value::Null)
+                    }
                     _ => match (to_f64(&av), to_f64(&bv)) {
                         (Some(x), Some(y)) => Value::Float(x - y),
                         _ => Value::Null,
@@ -156,7 +160,9 @@ impl Operation {
                 let av = a.resolve(row);
                 let bv = b.resolve(row);
                 match (&av, &bv) {
-                    (Value::Int(x), Value::Int(y)) => Value::Int(x * y),
+                    (Value::Int(x), Value::Int(y)) => {
+                        x.checked_mul(*y).map(Value::Int).unwrap_or(Value::Null)
+                    }
                     _ => match (to_f64(&av), to_f64(&bv)) {
                         (Some(x), Some(y)) => Value::Float(x * y),
                         _ => Value::Null,

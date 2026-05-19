@@ -15,7 +15,7 @@ pub struct CsvFileInputConfig {
     pub filename: String,
     #[serde(default = "default_delimiter")]
     pub delimiter: char,
-    #[serde(default = "default_true")]
+    #[serde(default = "default_true", alias = "has_header")]
     pub header_present: bool,
     #[serde(default)]
     pub encoding: String,
@@ -44,6 +44,7 @@ fn default_type() -> String {
 pub struct CsvFileInput {
     config: CsvFileInputConfig,
     schema: Option<Arc<RowSchema>>,
+    resolved_filename: Option<String>,
 }
 
 impl CsvFileInput {
@@ -51,6 +52,7 @@ impl CsvFileInput {
         Self {
             config,
             schema: None,
+            resolved_filename: None,
         }
     }
 
@@ -76,6 +78,16 @@ impl Transform for CsvFileInput {
     async fn open(&mut self, ctx: &ExecutionContext) -> Result<()> {
         let filename = ctx.resolve(&self.config.filename);
         debug!("CsvFileInput opening '{}'", filename);
+
+        // Reject path traversal attempts
+        if std::path::Path::new(&filename)
+            .components()
+            .any(|c| c == std::path::Component::ParentDir)
+        {
+            return Err(AjisaiError::Config("Path traversal not allowed".into()));
+        }
+
+        self.resolved_filename = Some(filename);
 
         if !self.config.fields.is_empty() {
             let fields: Vec<Field> = self
@@ -112,7 +124,11 @@ impl Transform for CsvFileInput {
     }
 
     async fn produce(&mut self, sender: mpsc::Sender<Row>) -> Result<()> {
-        let filename = self.config.filename.clone();
+        let filename = self
+            .resolved_filename
+            .as_deref()
+            .unwrap_or(&self.config.filename)
+            .to_owned();
         let delimiter = self.config.delimiter as u8;
         let header_present = self.config.header_present;
 
