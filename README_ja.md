@@ -38,13 +38,13 @@ Apache Hop 互換の超軽量・爆速 ETL エンジン。Rust で再構築。
 | **インストール** | バイナリ 1ファイル | JVM + 500MB+ | JVM + 500MB+ | クラスター構築 | pip + DB接続 | pip |
 | **起動時間** | **即時 (< 10ms)** | 3〜10秒 | 3〜10秒 | 30秒〜 | 数秒 | 〜1秒 |
 | **メモリ消費** | **〜10MB〜** | 256MB〜 | 256MB〜 | GB〜 | DBに依存 | 数十 MB〜 |
-| **ビジュアル GUI** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **CLI バッチ実行** | ✅ | ✅ | ✅ | ✅ | ✅ | スクリプト |
-| **Apache Hop 互換** | ✅ `.hpl` 読み込み | ✅ ネイティブ | ⚠️ 共通祖先 | ❌ | ❌ | ❌ |
+| **ビジュアル GUI** | ○ | ○ | ○ | × | × | × |
+| **CLI バッチ実行** | ○ | ○ | ○ | ○ | ○ | スクリプト |
+| **Apache Hop 互換** | .hpl 読み込み | ネイティブ | △ 共通祖先 | × | × | × |
 | **ファイル I/O** | CSV / JSON / DB | 多数 | 多数 | HDFS / S3 等 | DBのみ | CSV / Parquet 等 |
 | **対象規模** | 〜数億行 | 〜数千万行 | 〜数千万行 | 数十億行〜 | DBに依存 | 〜数億行 |
-| **Windows 対応** | ✅ | ✅ | ✅ | ⚠️ | ✅ | ✅ |
-| **クラスター不要** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| **Windows 対応** | ○ | ○ | ○ | △ | ○ | ○ |
+| **クラスター不要** | ○ | ○ | ○ | × | ○ | ○ |
 | **ライセンス** | MIT / Apache-2.0 | Apache-2.0 | Apache-2.0 | Apache-2.0 | Apache-2.0 | MIT |
 
 ### Ajisai が特に有利なシーン
@@ -222,10 +222,10 @@ ajisai/
 
 | フェーズ | 内容 | 状態 |
 |---|---|---|
-| Phase 1 | CLI + 基本 Transform + .hpl 互換 | ✅ 完成 |
-| Phase 2 | JSON / Calculator / Join / Lookup / DB / .hwf ワークフロー | ✅ 完成 |
-| Phase 3 | GUI — egui ビジュアルパイプラインエディタ | ✅ 完成 |
-| Phase 4A | 文字列 Transform 拡充（IfNull / StringOps / ConcatFields 等）| ✅ 完成 |
+| Phase 1 | CLI + 基本 Transform + .hpl 互換 | 完成 |
+| Phase 2 | JSON / Calculator / Join / Lookup / DB / .hwf ワークフロー | 完成 |
+| Phase 3 | GUI — egui ビジュアルパイプラインエディタ | 完成 |
+| Phase 4A | 文字列 Transform 拡充（IfNull / StringOps / ConcatFields 等）| 完成 |
 | Phase 4B | GroupBy 集計、Switch/Case 分岐、複数出力ストリーム | 開発中 |
 | Phase 4C | Excel / XML / REST Client、クラウドストレージ | 計画中 |
 

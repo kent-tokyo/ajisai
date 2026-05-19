@@ -38,13 +38,13 @@ English | [日本語](README_ja.md) | [中文](README_zh.md)
 | **Installation** | Single binary | JVM + 500 MB+ | JVM + 500 MB+ | Cluster setup | pip + DB connection | pip |
 | **Startup time** | **< 10 ms** | 3–10 s | 3–10 s | 30 s+ | Several seconds | ~1 s |
 | **Memory footprint** | **~10 MB+** | 256 MB+ | 256 MB+ | GB+ | DB-dependent | tens of MB+ |
-| **Visual GUI** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **CLI batch execution** | ✅ | ✅ | ✅ | ✅ | ✅ | Script |
-| **Apache Hop compatible** | ✅ reads `.hpl` | ✅ native | ⚠️ shared ancestry | ❌ | ❌ | ❌ |
+| **Visual GUI** | ○ | ○ | ○ | × | × | × |
+| **CLI batch execution** | ○ | ○ | ○ | ○ | ○ | Script |
+| **Apache Hop compatible** | reads `.hpl` | native | △ shared ancestry | × | × | × |
 | **File I/O** | CSV / JSON / DB | Many | Many | HDFS / S3 etc. | DB only | CSV / Parquet etc. |
 | **Scale target** | up to ~100M rows | up to ~10M rows | up to ~10M rows | billions+ | DB-dependent | up to ~100M rows |
-| **Windows support** | ✅ | ✅ | ✅ | ⚠️ | ✅ | ✅ |
-| **No cluster required** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| **Windows support** | ○ | ○ | ○ | △ | ○ | ○ |
+| **No cluster required** | ○ | ○ | ○ | × | ○ | ○ |
 | **License** | MIT / Apache-2.0 | Apache-2.0 | Apache-2.0 | Apache-2.0 | Apache-2.0 | MIT |
 
 ### Where Ajisai shines
@@ -222,10 +222,10 @@ ajisai/
 
 | Phase | Scope | Status |
 |---|---|---|
-| Phase 1 | CLI + core transforms + .hpl compatibility | ✅ Done |
-| Phase 2 | JSON / Calculator / Join / Lookup / DB / .hwf workflow | ✅ Done |
-| Phase 3 | GUI — egui visual pipeline editor | ✅ Done |
-| Phase 4A | String transforms: IfNull / StringOps / ConcatFields / Split | ✅ Done |
+| Phase 1 | CLI + core transforms + .hpl compatibility | Done |
+| Phase 2 | JSON / Calculator / Join / Lookup / DB / .hwf workflow | Done |
+| Phase 3 | GUI — egui visual pipeline editor | Done |
+| Phase 4A | String transforms: IfNull / StringOps / ConcatFields / Split | Done |
 | Phase 4B | GroupBy aggregation, Switch/Case routing, multi-output streams | In progress |
 | Phase 4C | Excel / XML / REST Client, cloud storage | Planned |
 
