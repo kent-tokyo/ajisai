@@ -1,5 +1,6 @@
 mod app;
 mod canvas;
+mod config_form;
 mod runner;
 mod state;
 

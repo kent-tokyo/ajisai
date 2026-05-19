@@ -1,28 +1,31 @@
 use crate::{
     canvas::{draw_connecting_edge, draw_edges, draw_node, output_port, NODE_H, NODE_W},
+    config_form,
     runner,
-    state::{Node, PipelineState, UiState, TRANSFORM_TYPES},
+    state::{Node, NodeStatus, PipelineState, UiState, UndoStack, TRANSFORM_CATEGORIES},
 };
-use egui::{Color32, FontId, Pos2, ScrollArea, Sense, Stroke, Vec2};
+use egui::{Color32, FontId, Pos2, ScrollArea, Sense, Vec2};
 use rust_i18n::t;
 use std::sync::mpsc;
 
 pub struct AjisaiApp {
-    pipeline: PipelineState,
-    ui: UiState,
+    pipeline:      PipelineState,
+    ui:            UiState,
     canvas_offset: Vec2,
-    canvas_zoom: f32,
-    run_rx: Option<mpsc::Receiver<String>>,
+    canvas_zoom:   f32,
+    run_rx:        Option<mpsc::Receiver<String>>,
+    undo:          UndoStack,
 }
 
 impl Default for AjisaiApp {
     fn default() -> Self {
         Self {
-            pipeline: PipelineState::new("Untitled Pipeline"),
-            ui: UiState::default(),
+            pipeline:      PipelineState::new("Untitled Pipeline"),
+            ui:            UiState::default(),
             canvas_offset: Vec2::new(40.0, 40.0),
-            canvas_zoom: 1.0,
-            run_rx: None,
+            canvas_zoom:   1.0,
+            run_rx:        None,
+            undo:          UndoStack::default(),
         }
     }
 }
@@ -31,6 +34,84 @@ impl AjisaiApp {
     pub fn new(_cc: &eframe::CreationContext) -> Self {
         Self::default()
     }
+
+    // ── Undo helpers ─────────────────────────────────────────────────────
+
+    /// Snapshot current pipeline state onto the undo stack before a mutation.
+    fn snapshot(&mut self) {
+        self.undo.push(self.pipeline.clone());
+    }
+
+    fn do_undo(&mut self) {
+        if let Some(prev) = self.undo.undo(self.pipeline.clone()) {
+            self.pipeline = prev;
+            self.ui.selected_node = None;
+        }
+    }
+
+    fn do_redo(&mut self) {
+        if let Some(next) = self.undo.redo(self.pipeline.clone()) {
+            self.pipeline = next;
+            self.ui.selected_node = None;
+        }
+    }
+
+    // ── Keyboard shortcuts ────────────────────────────────────────────────
+
+    fn handle_shortcuts(&mut self, ctx: &egui::Context) {
+        // Skip when a text field is active
+        if ctx.wants_keyboard_input() {
+            return;
+        }
+
+        // Delete / Backspace → remove selected node
+        if ctx.input(|i| {
+            i.key_pressed(egui::Key::Delete) || i.key_pressed(egui::Key::Backspace)
+        }) {
+            if let Some(sel_id) = self.ui.selected_node.clone() {
+                self.snapshot();
+                self.pipeline.remove_node(&sel_id);
+                self.ui.selected_node = None;
+            }
+        }
+
+        // Ctrl+Z → undo
+        if ctx.input(|i| i.key_pressed(egui::Key::Z) && i.modifiers.ctrl && !i.modifiers.shift)
+        {
+            self.do_undo();
+        }
+
+        // Ctrl+Y or Ctrl+Shift+Z → redo
+        if ctx.input(|i| {
+            (i.key_pressed(egui::Key::Y) && i.modifiers.ctrl)
+                || (i.key_pressed(egui::Key::Z) && i.modifiers.ctrl && i.modifiers.shift)
+        }) {
+            self.do_redo();
+        }
+
+        // Ctrl+D → duplicate selected node
+        if ctx.input(|i| i.key_pressed(egui::Key::D) && i.modifiers.ctrl) {
+            self.duplicate_selected();
+        }
+    }
+
+    fn duplicate_selected(&mut self) {
+        if let Some(sel_id) = self.ui.selected_node.clone() {
+            // Clone all needed data before any mutable borrow
+            if let Some(mut new_node) = self.pipeline.node(&sel_id).cloned() {
+                let new_id = self.pipeline.next_id();
+                new_node.label = format!("{} (copy)", new_node.label);
+                new_node.id = new_id.clone();
+                new_node.pos[0] += 24.0;
+                new_node.pos[1] += 24.0;
+                self.snapshot();
+                self.pipeline.add_node(new_node);
+                self.ui.selected_node = Some(new_id);
+            }
+        }
+    }
+
+    // ── Engine ───────────────────────────────────────────────────────────
 
     fn poll_engine(&mut self) {
         let done = if let Some(rx) = &self.run_rx {
@@ -41,7 +122,15 @@ impl AjisaiApp {
                         finished = true;
                         break;
                     }
-                    Ok(msg) => self.ui.log(msg),
+                    Ok(msg) => {
+                        // Mark nodes done or error based on message prefix
+                        let is_err = msg.starts_with("[ERROR]") || msg.starts_with("Error");
+                        let status = if is_err { NodeStatus::Error } else { NodeStatus::Done };
+                        for node in &self.pipeline.nodes {
+                            self.ui.node_status.insert(node.id.clone(), status.clone());
+                        }
+                        self.ui.log(msg);
+                    }
                     Err(mpsc::TryRecvError::Empty) => break,
                     Err(mpsc::TryRecvError::Disconnected) => {
                         finished = true;
@@ -59,14 +148,18 @@ impl AjisaiApp {
         }
     }
 
+    // ── Panels ───────────────────────────────────────────────────────────
+
     fn menu_bar(&mut self, ctx: &egui::Context) {
         egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
                 ui.menu_button(t!("menu.file"), |ui| {
                     if ui.button(t!("menu.new")).clicked() {
+                        self.snapshot();
                         self.pipeline = PipelineState::new("Untitled Pipeline");
                         self.ui.selected_node = None;
                         self.ui.log_lines.clear();
+                        self.ui.node_status.clear();
                         ui.close_menu();
                     }
                     if ui.button(t!("menu.open_hpl")).clicked() {
@@ -97,10 +190,28 @@ impl AjisaiApp {
                         self.validate_pipeline();
                         ui.close_menu();
                     }
+                    ui.separator();
+                    if ui
+                        .add_enabled(self.undo.can_undo(), egui::Button::new(t!("menu.undo")))
+                        .clicked()
+                    {
+                        self.do_undo();
+                        ui.close_menu();
+                    }
+                    if ui
+                        .add_enabled(self.undo.can_redo(), egui::Button::new(t!("menu.redo")))
+                        .clicked()
+                    {
+                        self.do_redo();
+                        ui.close_menu();
+                    }
+                    ui.separator();
                     if ui.button(t!("menu.clear")).clicked() {
+                        self.snapshot();
                         self.pipeline.nodes.clear();
                         self.pipeline.edges.clear();
                         self.ui.selected_node = None;
+                        self.ui.node_status.clear();
                         ui.close_menu();
                     }
                 });
@@ -118,7 +229,12 @@ impl AjisaiApp {
                 });
 
                 ui.separator();
-                ui.label(&self.pipeline.name);
+                // Inline pipeline name editing
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.pipeline.name)
+                        .desired_width(160.0)
+                        .font(FontId::proportional(13.0)),
+                );
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if self.ui.pipeline_running {
@@ -148,13 +264,52 @@ impl AjisaiApp {
                 ui.separator();
 
                 ScrollArea::vertical().show(ui, |ui| {
-                    for (type_name, display_name) in TRANSFORM_TYPES {
-                        let btn = egui::Button::new(egui::RichText::new(*display_name).size(12.0))
-                            .min_size(egui::vec2(155.0, 28.0));
+                    for (category, transforms) in TRANSFORM_CATEGORIES {
+                        let collapsed =
+                            self.ui.collapsed_categories.contains(*category);
+                        let arrow = if collapsed { "▶" } else { "▼" };
+                        let header = format!("{} {}", arrow, category);
 
-                        if ui.add(btn).clicked() {
-                            self.add_node(type_name);
+                        if ui
+                            .selectable_label(
+                                false,
+                                egui::RichText::new(&header).strong().size(11.0),
+                            )
+                            .clicked()
+                        {
+                            if collapsed {
+                                self.ui.collapsed_categories.remove(*category);
+                            } else {
+                                self.ui
+                                    .collapsed_categories
+                                    .insert(category.to_string());
+                            }
                         }
+
+                        if !collapsed {
+                            for (type_name, display_name) in *transforms {
+                                let dot_color =
+                                    crate::canvas::category_color(type_name);
+                                let btn_resp = ui.add(
+                                    egui::Button::new(
+                                        egui::RichText::new(*display_name).size(12.0),
+                                    )
+                                    .min_size(egui::vec2(155.0, 26.0)),
+                                );
+                                // Paint category dot beside the label
+                                let dot_pos = Pos2::new(
+                                    btn_resp.rect.left() + 6.0,
+                                    btn_resp.rect.center().y,
+                                );
+                                ui.painter()
+                                    .circle_filled(dot_pos, 3.5, dot_color);
+
+                                if btn_resp.clicked() {
+                                    self.add_node(type_name);
+                                }
+                            }
+                        }
+                        ui.add_space(2.0);
                     }
                 });
             });
@@ -162,50 +317,147 @@ impl AjisaiApp {
 
     fn right_panel(&mut self, ctx: &egui::Context) {
         egui::SidePanel::right("properties")
-            .resizable(false)
-            .exact_width(220.0)
+            .resizable(true)
+            .min_width(200.0)
+            .default_width(240.0)
             .show(ctx, |ui| {
                 ui.add_space(6.0);
                 ui.label(egui::RichText::new(t!("panel.properties")).strong());
                 ui.separator();
 
                 if let Some(sel_id) = self.ui.selected_node.clone() {
-                    if let Some(node) = self.pipeline.node_mut(&sel_id) {
-                        ui.label(egui::RichText::new(&node.type_name).monospace().size(11.0));
+                    ScrollArea::vertical().show(ui, |ui| {
+                        // Type badge + name
+                        let type_name = self
+                            .pipeline
+                            .node(&sel_id)
+                            .map(|n| n.type_name.clone())
+                            .unwrap_or_default();
+                        let badge_color = crate::canvas::category_color(&type_name);
+
+                        ui.horizontal(|ui| {
+                            let (rect, _) = ui.allocate_exact_size(
+                                egui::vec2(10.0, 10.0),
+                                Sense::hover(),
+                            );
+                            ui.painter().circle_filled(rect.center(), 5.0, badge_color);
+                            ui.label(
+                                egui::RichText::new(&type_name)
+                                    .monospace()
+                                    .size(11.0),
+                            );
+                        });
                         ui.add_space(4.0);
 
+                        // Node label
                         ui.label(t!("prop.name"));
-                        ui.text_edit_singleline(&mut node.label);
+                        if let Some(node) = self.pipeline.node_mut(&sel_id) {
+                            ui.text_edit_singleline(&mut node.label);
+                        }
                         ui.add_space(8.0);
 
+                        // Config form
+                        ui.separator();
                         ui.label(t!("prop.config"));
-                        let config_str =
-                            serde_json::to_string_pretty(&node.config).unwrap_or_default();
-                        let mut buf = config_str;
-                        let resp = ui.add(
-                            egui::TextEdit::multiline(&mut buf)
-                                .font(FontId::monospace(11.0))
-                                .desired_rows(12)
-                                .desired_width(f32::INFINITY),
-                        );
-                        if resp.changed() {
-                            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&buf) {
-                                if let Some(n) = self.pipeline.node_mut(&sel_id) {
-                                    n.config = v;
-                                }
-                            }
+                        ui.add_space(4.0);
+                        if let Some(node) = self.pipeline.node_mut(&sel_id) {
+                            config_form::show_config_form(
+                                ui,
+                                &type_name,
+                                &mut node.config,
+                            );
                         }
 
                         ui.add_space(8.0);
                         ui.separator();
-                        if ui.button(t!("prop.delete")).clicked() {
-                            let id = sel_id.clone();
-                            self.pipeline.remove_node(&id);
-                            self.ui.selected_node = None;
+
+                        // Outgoing connections (with ✕ to disconnect)
+                        let out_edges: Vec<String> = self
+                            .pipeline
+                            .edges
+                            .iter()
+                            .filter(|e| e.from == sel_id)
+                            .map(|e| e.to.clone())
+                            .collect();
+                        let in_edges: Vec<String> = self
+                            .pipeline
+                            .edges
+                            .iter()
+                            .filter(|e| e.to == sel_id)
+                            .map(|e| e.from.clone())
+                            .collect();
+
+                        if !out_edges.is_empty() || !in_edges.is_empty() {
+                            ui.label(
+                                egui::RichText::new(t!("prop.connections"))
+                                    .size(11.0)
+                                    .weak(),
+                            );
+                            for to_id in &out_edges {
+                                let to_label = self
+                                    .pipeline
+                                    .node(to_id)
+                                    .map(|n| n.label.as_str())
+                                    .unwrap_or(to_id.as_str())
+                                    .to_owned();
+                                ui.horizontal(|ui| {
+                                    ui.label(
+                                        egui::RichText::new(format!("→ {}", to_label))
+                                            .size(11.0),
+                                    );
+                                    if ui.small_button("✕").clicked() {
+                                        self.snapshot();
+                                        self.pipeline.remove_edge(&sel_id, to_id);
+                                    }
+                                });
+                            }
+                            for from_id in &in_edges {
+                                let from_label = self
+                                    .pipeline
+                                    .node(from_id)
+                                    .map(|n| n.label.as_str())
+                                    .unwrap_or(from_id.as_str());
+                                ui.label(
+                                    egui::RichText::new(format!("← {}", from_label))
+                                        .size(11.0),
+                                );
+                            }
+                            ui.add_space(4.0);
+                            ui.separator();
                         }
-                    }
+
+                        // Duplicate + Delete
+                        ui.horizontal(|ui| {
+                            if ui.button(t!("prop.duplicate")).clicked() {
+                                self.duplicate_selected();
+                            }
+                            if ui
+                                .button(
+                                    egui::RichText::new(t!("prop.delete"))
+                                        .color(Color32::from_rgb(220, 80, 80)),
+                                )
+                                .clicked()
+                            {
+                                let id = sel_id.clone();
+                                self.snapshot();
+                                self.pipeline.remove_node(&id);
+                                self.ui.selected_node = None;
+                            }
+                        });
+                    });
                 } else {
+                    ui.add_space(6.0);
+                    ui.label(t!("prop.pipeline_name"));
+                    ui.text_edit_singleline(&mut self.pipeline.name);
+                    ui.add_space(8.0);
+                    ui.separator();
                     ui.colored_label(Color32::GRAY, t!("prop.no_selection"));
+                    ui.add_space(4.0);
+                    ui.label(
+                        egui::RichText::new(t!("prop.shortcuts_hint"))
+                            .size(10.0)
+                            .weak(),
+                    );
                 }
             });
     }
@@ -226,17 +478,21 @@ impl AjisaiApp {
 
                 ScrollArea::vertical().stick_to_bottom(true).show(ui, |ui| {
                     for line in &self.ui.log_lines {
-                        let color = if line.starts_with("[ERROR]") || line.starts_with("Error") {
-                            Color32::from_rgb(255, 100, 100)
-                        } else if line.starts_with("[OK]")
-                            || line.contains("completed")
-                            || line.contains("完了")
-                        {
-                            Color32::from_rgb(100, 220, 100)
-                        } else {
-                            Color32::LIGHT_GRAY
-                        };
-                        ui.colored_label(color, egui::RichText::new(line).monospace().size(11.0));
+                        let color =
+                            if line.starts_with("[ERROR]") || line.starts_with("Error") {
+                                Color32::from_rgb(255, 100, 100)
+                            } else if line.starts_with("[OK]")
+                                || line.contains("completed")
+                                || line.contains("完了")
+                            {
+                                Color32::from_rgb(100, 220, 100)
+                            } else {
+                                Color32::LIGHT_GRAY
+                            };
+                        ui.colored_label(
+                            color,
+                            egui::RichText::new(line).monospace().size(11.0),
+                        );
                     }
                 });
             });
@@ -249,7 +505,7 @@ impl AjisaiApp {
                 let canvas_rect = ui.max_rect();
                 let painter = ui.painter_at(canvas_rect);
 
-                // Scroll-to-zoom (toward cursor)
+                // Scroll-to-zoom toward cursor
                 let scroll_delta = ctx.input(|i| i.smooth_scroll_delta.y);
                 if scroll_delta != 0.0 {
                     if let Some(cursor) = ctx.input(|i| i.pointer.hover_pos()) {
@@ -257,7 +513,8 @@ impl AjisaiApp {
                             let old_zoom = self.canvas_zoom;
                             let new_zoom =
                                 (old_zoom * (1.0 + scroll_delta * 0.002)).clamp(0.2, 4.0);
-                            let world = (cursor.to_vec2() - self.canvas_offset) / old_zoom;
+                            let world =
+                                (cursor.to_vec2() - self.canvas_offset) / old_zoom;
                             self.canvas_offset = cursor.to_vec2() - world * new_zoom;
                             self.canvas_zoom = new_zoom;
                         }
@@ -265,16 +522,12 @@ impl AjisaiApp {
                 }
 
                 self.draw_grid(&painter, canvas_rect);
-                draw_edges(
-                    &painter,
-                    &self.pipeline,
-                    self.canvas_offset,
-                    self.canvas_zoom,
-                );
+                draw_edges(&painter, &self.pipeline, self.canvas_offset, self.canvas_zoom);
 
                 if let Some(from_id) = &self.ui.connecting_from.clone() {
                     if let Some(from_node) = self.pipeline.node(from_id) {
-                        let from_pos = output_port(from_node, self.canvas_offset, self.canvas_zoom);
+                        let from_pos =
+                            output_port(from_node, self.canvas_offset, self.canvas_zoom);
                         if let Some(cursor) = ctx.input(|i| i.pointer.hover_pos()) {
                             draw_connecting_edge(&painter, from_pos, cursor);
                         }
@@ -297,14 +550,31 @@ impl AjisaiApp {
                     self.ui.connecting_from = None;
                 }
 
-                let ids: Vec<String> = self.pipeline.nodes.iter().map(|n| n.id.clone()).collect();
-                for node_id in &ids {
-                    let is_selected = self.ui.selected_node.as_deref() == Some(node_id);
-                    let connecting_from = self.ui.connecting_from.clone();
+                let ids: Vec<String> =
+                    self.pipeline.nodes.iter().map(|n| n.id.clone()).collect();
 
-                    if let Some(node) = self.pipeline.nodes.iter_mut().find(|n| n.id == *node_id) {
-                        let interaction =
-                            draw_node(ui, node, is_selected, self.canvas_offset, self.canvas_zoom);
+                for node_id in &ids {
+                    let is_selected =
+                        self.ui.selected_node.as_deref() == Some(node_id.as_str());
+                    let connecting_from = self.ui.connecting_from.clone();
+                    let status =
+                        self.ui.node_status.get(node_id.as_str()).cloned();
+
+                    if let Some(node) =
+                        self.pipeline.nodes.iter_mut().find(|n| n.id == *node_id)
+                    {
+                        let interaction = draw_node(
+                            ui,
+                            node,
+                            is_selected,
+                            self.canvas_offset,
+                            self.canvas_zoom,
+                            status,
+                        );
+
+                        if interaction.drag_started {
+                            self.snapshot();
+                        }
 
                         if interaction.clicked
                             && !interaction.output_clicked
@@ -320,12 +590,14 @@ impl AjisaiApp {
                             if let Some(from_id) = connecting_from {
                                 if from_id != *node_id {
                                     let to = node_id.clone();
+                                    self.snapshot();
                                     self.pipeline.add_edge(from_id, to);
                                     self.ui.connecting_from = None;
                                 }
                             }
                         }
                         if interaction.right_clicked {
+                            self.snapshot();
                             self.pipeline.remove_node(node_id);
                             if self.ui.selected_node.as_deref() == Some(node_id) {
                                 self.ui.selected_node = None;
@@ -354,7 +626,7 @@ impl AjisaiApp {
         while x < rect.right() {
             painter.line_segment(
                 [Pos2::new(x, rect.top()), Pos2::new(x, rect.bottom())],
-                Stroke::new(0.5, col),
+                egui::Stroke::new(0.5, col),
             );
             x += step;
         }
@@ -362,11 +634,13 @@ impl AjisaiApp {
         while y < rect.bottom() {
             painter.line_segment(
                 [Pos2::new(rect.left(), y), Pos2::new(rect.right(), y)],
-                Stroke::new(0.5, col),
+                egui::Stroke::new(0.5, col),
             );
             y += step;
         }
     }
+
+    // ── Actions ──────────────────────────────────────────────────────────
 
     fn add_node(&mut self, type_name: &str) {
         let id = self.pipeline.next_id();
@@ -377,10 +651,10 @@ impl AjisaiApp {
         ];
         let mut node = Node::new(&id, type_name, pos);
         node.config = default_config(type_name);
+        self.snapshot();
         self.pipeline.add_node(node);
         self.ui.selected_node = Some(id);
-        self.ui
-            .log(t!("log.added", node_type = type_name).to_string());
+        self.ui.log(t!("log.added", node_type = type_name).to_string());
     }
 
     fn validate_pipeline(&mut self) {
@@ -406,6 +680,13 @@ impl AjisaiApp {
         if self.pipeline.nodes.is_empty() {
             self.ui.log(t!("log.run_empty").to_string());
             return;
+        }
+
+        // Mark all nodes as running
+        for node in &self.pipeline.nodes {
+            self.ui
+                .node_status
+                .insert(node.id.clone(), NodeStatus::Running);
         }
 
         let (tx, rx) = mpsc::channel::<String>();
@@ -436,8 +717,9 @@ impl AjisaiApp {
                         );
                     }
                     Err(e) => {
-                        let _ = tx
-                            .send(t!("log.run_error", error = e.to_string().as_str()).to_string());
+                        let _ = tx.send(
+                            t!("log.run_error", error = e.to_string().as_str()).to_string(),
+                        );
                     }
                 }
                 let _ = tx.send("__DONE__".into());
@@ -460,7 +742,8 @@ impl AjisaiApp {
                         ];
                         let mut node = Node::new(&tr.name, &tr.type_name, pos);
                         node.label = tr.name.clone();
-                        node.config = serde_json::to_value(&tr.attributes).unwrap_or_default();
+                        node.config =
+                            serde_json::to_value(&tr.attributes).unwrap_or_default();
                         ps.add_node(node);
                     }
                     for h in &hop.order {
@@ -468,6 +751,7 @@ impl AjisaiApp {
                             ps.add_edge(&h.from, &h.to);
                         }
                     }
+                    self.snapshot();
                     self.pipeline = ps;
                     let path_str = path.display().to_string();
                     self.ui
@@ -475,8 +759,9 @@ impl AjisaiApp {
                 }
                 Err(e) => {
                     let err_str = e.to_string();
-                    self.ui
-                        .log(t!("log.open_error", error = err_str.as_str()).to_string());
+                    self.ui.log(
+                        t!("log.open_error", error = err_str.as_str()).to_string(),
+                    );
                 }
             }
         }
@@ -508,8 +793,9 @@ impl AjisaiApp {
                 }
                 Err(e) => {
                     let err_str = e.to_string();
-                    self.ui
-                        .log(t!("log.save_error", error = err_str.as_str()).to_string());
+                    self.ui.log(
+                        t!("log.save_error", error = err_str.as_str()).to_string(),
+                    );
                 }
             }
         }
@@ -522,12 +808,12 @@ impl AjisaiApp {
             .nodes
             .iter()
             .map(|n| HopTransform {
-                name: n.label.clone(),
-                type_name: n.type_name.clone(),
+                name:        n.label.clone(),
+                type_name:   n.type_name.clone(),
                 description: None,
-                xloc: Some(n.pos[0] as i32),
-                yloc: Some(n.pos[1] as i32),
-                attributes: match &n.config {
+                xloc:        Some(n.pos[0] as i32),
+                yloc:        Some(n.pos[1] as i32),
+                attributes:  match &n.config {
                     serde_json::Value::Object(m) => {
                         m.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
                     }
@@ -541,17 +827,17 @@ impl AjisaiApp {
             .edges
             .iter()
             .map(|e| HopHop {
-                from: e.from.clone(),
-                to: e.to.clone(),
+                from:    e.from.clone(),
+                to:      e.to.clone(),
                 enabled: Some(true),
             })
             .collect();
 
         HopPipeline {
-            name: self.pipeline.name.clone(),
+            name:       self.pipeline.name.clone(),
             transforms,
             order,
-            info: HopPipelineInfo { description: None },
+            info:       HopPipelineInfo { description: None },
         }
     }
 }
@@ -559,6 +845,8 @@ impl AjisaiApp {
 impl eframe::App for AjisaiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.poll_engine();
+        self.handle_shortcuts(ctx);
+
         if self.ui.pipeline_running {
             ctx.request_repaint();
         }
@@ -573,33 +861,21 @@ impl eframe::App for AjisaiApp {
 
 fn default_config(type_name: &str) -> serde_json::Value {
     match type_name {
-        "CsvFileInput" => serde_json::json!({ "filename": "input.csv",  "delimiter": "," }),
-        "CsvFileOutput" => serde_json::json!({ "filename": "output.csv", "delimiter": "," }),
-        "JsonFileInput" => serde_json::json!({ "filename": "input.json", "format": "array" }),
-        "JsonFileOutput" => {
-            serde_json::json!({ "filename": "output.json", "format": "array", "pretty": true })
-        }
-        "TableInput" => {
-            serde_json::json!({ "connection_url": "sqlite://data.db", "sql": "SELECT * FROM table_name" })
-        }
-        "TableOutput" => {
-            serde_json::json!({ "connection_url": "sqlite://data.db", "table": "table_name", "mode": "insert" })
-        }
-        "FilterRows" => serde_json::json!({ "condition": null }),
+        "CsvFileInput"  => serde_json::json!({ "filename": "input.csv",  "delimiter": ",", "has_header": true }),
+        "CsvFileOutput" => serde_json::json!({ "filename": "output.csv", "delimiter": ",", "header": true }),
+        "JsonFileInput"  => serde_json::json!({ "filename": "input.json",  "format": "array" }),
+        "JsonFileOutput" => serde_json::json!({ "filename": "output.json", "format": "array", "pretty": true }),
+        "TableInput"  => serde_json::json!({ "connection_url": "sqlite://data.db", "sql": "SELECT * FROM table_name" }),
+        "TableOutput" => serde_json::json!({ "connection_url": "sqlite://data.db", "table": "table_name", "mode": "insert", "batch_size": 0 }),
+        "FilterRows"   => serde_json::json!({ "condition": null }),
         "SelectValues" => serde_json::json!({ "fields": [] }),
-        "SortRows" => serde_json::json!({ "keys": [{ "field": "id", "ascending": true }] }),
+        "SortRows"     => serde_json::json!({ "keys": [{ "field": "id", "ascending": true }] }),
         "AddConstants" => serde_json::json!({ "fields": [] }),
         "CalculatorStep" => serde_json::json!({ "calculations": [] }),
-        "StreamLookup" => {
-            serde_json::json!({ "lookup_transform": "", "key_field": "id", "lookup_key_field": "id", "return_fields": [] })
-        }
-        "MergeJoin" => {
-            serde_json::json!({ "left_key": "id", "right_key": "id", "join_type": "inner", "right_prefix": "r_" })
-        }
-        "Deduplicate" => serde_json::json!({ "key_fields": [] }),
-        "DatabaseLookup" => {
-            serde_json::json!({ "connection_url": "sqlite://data.db", "sql": "SELECT * FROM t WHERE id = ?", "key_field": "id", "return_fields": [] })
-        }
+        "StreamLookup"   => serde_json::json!({ "lookup_transform": "", "key_field": "id", "lookup_key_field": "id", "return_fields": [] }),
+        "MergeJoin"      => serde_json::json!({ "left_key": "id", "right_key": "id", "join_type": "inner", "right_prefix": "r_" }),
+        "Deduplicate"    => serde_json::json!({ "key_fields": [] }),
+        "DatabaseLookup" => serde_json::json!({ "connection_url": "sqlite://data.db", "sql": "SELECT * FROM t WHERE id = ?", "key_field": "id", "return_fields": [] }),
         _ => serde_json::Value::Object(serde_json::Map::new()),
     }
 }

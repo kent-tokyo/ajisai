@@ -8,6 +8,8 @@ en:
     pipeline: "Pipeline"
     run: "Run"
     validate: "Validate"
+    undo: "Undo (Ctrl+Z)"
+    redo: "Redo (Ctrl+Y)"
     clear: "Clear Canvas"
     language: "Language"
   panel:
@@ -17,14 +19,18 @@ en:
     log_clear: "Clear"
   prop:
     name: "Name:"
-    config: "Config (JSON):"
-    delete: "Delete node"
+    config: "Config:"
+    pipeline_name: "Pipeline name:"
+    connections: "Connections"
+    duplicate: "Duplicate (Ctrl+D)"
+    delete: "Delete"
     no_selection: "Select a node to edit its properties."
+    shortcuts_hint: "Del — delete  Ctrl+Z — undo  Ctrl+D — duplicate"
   status:
     running: "Running..."
     nodes: "%{n} nodes  %{e} edges  %{z}%"
   canvas:
-    hint: "Click palette to add  |  Drag output port to connect  |  Right-click to delete  |  Scroll to zoom  |  Alt+drag to pan"
+    hint: "Palette → add node  |  Output port → drag to connect  |  Right-click → delete  |  Scroll → zoom  |  Alt+drag → pan"
   log:
     added: "Added node: %{node_type}"
     validate_empty: "[ERROR] Pipeline has no nodes."
