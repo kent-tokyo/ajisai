@@ -38,8 +38,13 @@ pub fn show_config_form(ui: &mut Ui, type_name: &str, config: &mut Value) -> boo
         "TableOutput" => {
             changed |= str_row(ui, "Connection URL", config, "connection_url");
             changed |= str_row(ui, "Table", config, "table");
-            changed |=
-                combo_row(ui, "Mode", config, "mode", &["insert", "upsert", "overwrite"]);
+            changed |= combo_row(
+                ui,
+                "Mode",
+                config,
+                "mode",
+                &["insert", "upsert", "overwrite"],
+            );
             changed |= u64_row(ui, "Batch size (0=end)", config, "batch_size");
         }
         "FilterRows" => {
@@ -129,7 +134,10 @@ fn str_row(ui: &mut Ui, label: &str, config: &mut Value, key: &str) -> bool {
 fn bool_row(ui: &mut Ui, label: &str, config: &mut Value, key: &str) -> bool {
     let obj = config.as_object_mut().unwrap();
     let mut val = obj.get(key).and_then(|v| v.as_bool()).unwrap_or(false);
-    if ui.checkbox(&mut val, egui::RichText::new(label).size(11.0)).changed() {
+    if ui
+        .checkbox(&mut val, egui::RichText::new(label).size(11.0))
+        .changed()
+    {
         obj.insert(key.to_owned(), Value::Bool(val));
         true
     } else {
@@ -137,13 +145,7 @@ fn bool_row(ui: &mut Ui, label: &str, config: &mut Value, key: &str) -> bool {
     }
 }
 
-fn combo_row(
-    ui: &mut Ui,
-    label: &str,
-    config: &mut Value,
-    key: &str,
-    options: &[&str],
-) -> bool {
+fn combo_row(ui: &mut Ui, label: &str, config: &mut Value, key: &str, options: &[&str]) -> bool {
     let obj = config.as_object_mut().unwrap();
     let mut current = obj
         .get(key)
@@ -157,7 +159,10 @@ fn combo_row(
         .width(f32::INFINITY)
         .show_ui(ui, |ui| {
             for &opt in options {
-                if ui.selectable_value(&mut current, opt.to_owned(), opt).changed() {
+                if ui
+                    .selectable_value(&mut current, opt.to_owned(), opt)
+                    .changed()
+                {
                     changed = true;
                 }
             }
@@ -181,13 +186,7 @@ fn u64_row(ui: &mut Ui, label: &str, config: &mut Value, key: &str) -> bool {
     }
 }
 
-fn text_area_row(
-    ui: &mut Ui,
-    label: &str,
-    config: &mut Value,
-    key: &str,
-    rows: usize,
-) -> bool {
+fn text_area_row(ui: &mut Ui, label: &str, config: &mut Value, key: &str, rows: usize) -> bool {
     let obj = config.as_object_mut().unwrap();
     let mut val = obj
         .get(key)
@@ -253,8 +252,11 @@ fn sort_keys_editor(ui: &mut Ui, config: &mut Value) -> bool {
         .map(|arr| {
             arr.iter()
                 .map(|k| {
-                    let field =
-                        k.get("field").and_then(|f| f.as_str()).unwrap_or("").to_owned();
+                    let field = k
+                        .get("field")
+                        .and_then(|f| f.as_str())
+                        .unwrap_or("")
+                        .to_owned();
                     let asc = k.get("ascending").and_then(|a| a.as_bool()).unwrap_or(true);
                     (field, asc)
                 })
@@ -322,10 +324,16 @@ fn const_fields_editor(ui: &mut Ui, config: &mut Value) -> bool {
         .map(|arr| {
             arr.iter()
                 .map(|f| {
-                    let name =
-                        f.get("name").and_then(|v| v.as_str()).unwrap_or("").to_owned();
-                    let value =
-                        f.get("value").and_then(|v| v.as_str()).unwrap_or("").to_owned();
+                    let name = f
+                        .get("name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_owned();
+                    let value = f
+                        .get("value")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_owned();
                     let typ = f
                         .get("type")
                         .and_then(|v| v.as_str())

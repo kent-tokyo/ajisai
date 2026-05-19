@@ -5,23 +5,19 @@ pub const NODE_W: f32 = 160.0;
 pub const NODE_H: f32 = 48.0;
 pub const PORT_R: f32 = 6.0;
 
-const COL_NODE_BG:     Color32 = Color32::from_rgb(45, 50, 65);
-const COL_NODE_SEL:    Color32 = Color32::from_rgb(70, 130, 200);
+const COL_NODE_BG: Color32 = Color32::from_rgb(45, 50, 65);
+const COL_NODE_SEL: Color32 = Color32::from_rgb(70, 130, 200);
 const COL_NODE_BORDER: Color32 = Color32::from_rgb(90, 100, 120);
-const COL_PORT:        Color32 = Color32::from_rgb(120, 200, 120);
-const COL_EDGE:        Color32 = Color32::from_rgb(160, 160, 200);
+const COL_PORT: Color32 = Color32::from_rgb(120, 200, 120);
+const COL_EDGE: Color32 = Color32::from_rgb(160, 160, 200);
 const COL_EDGE_ACTIVE: Color32 = Color32::from_rgb(100, 200, 255);
-const COL_LABEL:       Color32 = Color32::WHITE;
-const COL_TYPE:        Color32 = Color32::from_rgb(160, 170, 190);
+const COL_LABEL: Color32 = Color32::WHITE;
+const COL_TYPE: Color32 = Color32::from_rgb(160, 170, 190);
 
 /// Header accent color by transform category
 pub fn category_color(type_name: &str) -> Color32 {
     match type_name {
-        "CsvFileInput"
-        | "CsvFileOutput"
-        | "JsonFileInput"
-        | "JsonFileOutput"
-        | "TableInput"
+        "CsvFileInput" | "CsvFileOutput" | "JsonFileInput" | "JsonFileOutput" | "TableInput"
         | "TableOutput" => Color32::from_rgb(200, 120, 40), // orange — I/O
         "StreamLookup" | "MergeJoin" | "DatabaseLookup" => {
             Color32::from_rgb(140, 80, 200) // purple — Join/Lookup
@@ -127,7 +123,11 @@ pub fn draw_node(
     );
 
     // Body
-    let border_color = if is_selected { COL_NODE_SEL } else { COL_NODE_BORDER };
+    let border_color = if is_selected {
+        COL_NODE_SEL
+    } else {
+        COL_NODE_BORDER
+    };
     painter.rect_filled(rect, 6.0 * zoom, COL_NODE_BG);
     painter.rect_stroke(
         rect,
@@ -147,7 +147,7 @@ pub fn draw_node(
     painter.rect_filled(header_rect, corner_r, category_color(&node.type_name));
 
     let label_size = (13.0 * zoom).max(6.0);
-    let type_size  = (10.0 * zoom).max(5.0);
+    let type_size = (10.0 * zoom).max(5.0);
 
     // Label + type name
     painter.text(
@@ -177,9 +177,9 @@ pub fn draw_node(
                     0,
                 )
             }
-            NodeStatus::Done  => Color32::from_rgb(80, 210, 80),
+            NodeStatus::Done => Color32::from_rgb(80, 210, 80),
             NodeStatus::Error => Color32::from_rgb(230, 70, 70),
-            NodeStatus::Idle  => Color32::TRANSPARENT,
+            NodeStatus::Idle => Color32::TRANSPARENT,
         };
         if *s != NodeStatus::Idle {
             let dot = Pos2::new(rect.right() - 8.0 * zoom, rect.top() + 8.0 * zoom);
@@ -189,7 +189,7 @@ pub fn draw_node(
     }
 
     // Ports
-    let in_pos  = input_port(node, offset, zoom);
+    let in_pos = input_port(node, offset, zoom);
     let out_pos = output_port(node, offset, zoom);
     painter.circle_filled(in_pos, pr, COL_PORT);
     painter.circle_stroke(in_pos, pr, Stroke::new(1.0, Color32::WHITE));
@@ -198,24 +198,24 @@ pub fn draw_node(
 
     // Port hit areas
     let out_rect = Rect::from_center_size(out_pos, Vec2::splat(pr * 2.5));
-    let in_rect  = Rect::from_center_size(in_pos,  Vec2::splat(pr * 2.5));
+    let in_rect = Rect::from_center_size(in_pos, Vec2::splat(pr * 2.5));
     let out_resp = ui.allocate_rect(out_rect, Sense::click());
-    let in_resp  = ui.allocate_rect(in_rect,  Sense::click());
+    let in_resp = ui.allocate_rect(in_rect, Sense::click());
 
     NodeInteraction {
-        clicked:        resp.clicked(),
+        clicked: resp.clicked(),
         output_clicked: out_resp.clicked(),
-        input_clicked:  in_resp.clicked(),
+        input_clicked: in_resp.clicked(),
         drag_started,
-        right_clicked:  resp.secondary_clicked(),
+        right_clicked: resp.secondary_clicked(),
     }
 }
 
 #[derive(Default)]
 pub struct NodeInteraction {
-    pub clicked:        bool,
+    pub clicked: bool,
     pub output_clicked: bool,
-    pub input_clicked:  bool,
-    pub drag_started:   bool,
-    pub right_clicked:  bool,
+    pub input_clicked: bool,
+    pub drag_started: bool,
+    pub right_clicked: bool,
 }
