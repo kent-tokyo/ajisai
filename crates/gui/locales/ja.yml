@@ -25,7 +25,7 @@ ja:
     duplicate: "複製 (Ctrl+D)"
     delete: "削除"
     no_selection: "ノードを選択するとプロパティを編集できます。"
-    shortcuts_hint: "Del — 削除  Ctrl+Z — 元に戻す  Ctrl+D — 複製"
+    shortcuts_hint: "Del — 削除  Ctrl+Z — 元に戻す  Ctrl+D — 複製  Ctrl+S — 保存"
   status:
     running: "実行中..."
     nodes: "%{n} ノード  %{e} エッジ  %{z}%"

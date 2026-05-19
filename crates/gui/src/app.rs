@@ -89,6 +89,15 @@ impl AjisaiApp {
         if ctx.input(|i| i.key_pressed(egui::Key::D) && i.modifiers.ctrl) {
             self.duplicate_selected();
         }
+
+        // Ctrl+S → save (overwrite current file, or open save dialog)
+        if ctx.input(|i| i.key_pressed(egui::Key::S) && i.modifiers.ctrl) {
+            if self.ui.current_file.is_some() {
+                self.save_current_file();
+            } else {
+                self.save_hpl_dialog();
+            }
+        }
     }
 
     fn duplicate_selected(&mut self) {
@@ -727,6 +736,7 @@ impl AjisaiApp {
                     }
                     self.snapshot();
                     self.pipeline = ps;
+                    self.ui.current_file = Some(path.clone());
                     let path_str = path.display().to_string();
                     self.ui
                         .log(t!("log.open_ok", path = path_str.as_str()).to_string());
@@ -758,6 +768,24 @@ impl AjisaiApp {
     fn save_hpl_dialog(&mut self) {
         let default_name = format!("{}.hpl", self.pipeline.name.replace(' ', "_"));
         if let Some(path) = rfd_save_file(&default_name, "hpl") {
+            match ajisai_hop_compat::write_hpl_file(&self.pipeline_to_hop(), &path) {
+                Ok(()) => {
+                    self.ui.current_file = Some(path.clone());
+                    let path_str = path.display().to_string();
+                    self.ui
+                        .log(t!("log.save_ok", path = path_str.as_str()).to_string());
+                }
+                Err(e) => {
+                    let err_str = e.to_string();
+                    self.ui
+                        .log(t!("log.save_error", error = err_str.as_str()).to_string());
+                }
+            }
+        }
+    }
+
+    fn save_current_file(&mut self) {
+        if let Some(path) = self.ui.current_file.clone() {
             match ajisai_hop_compat::write_hpl_file(&self.pipeline_to_hop(), &path) {
                 Ok(()) => {
                     let path_str = path.display().to_string();
@@ -818,6 +846,17 @@ impl eframe::App for AjisaiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.poll_engine();
         self.handle_shortcuts(ctx);
+
+        // Reflect current filename in window title
+        let title = match &self.ui.current_file {
+            Some(p) => format!(
+                "{} — {}",
+                self.pipeline.name,
+                p.file_name().unwrap_or_default().to_string_lossy()
+            ),
+            None => self.pipeline.name.clone(),
+        };
+        ctx.send_viewport_cmd(egui::ViewportCommand::Title(title));
 
         if self.ui.pipeline_running {
             ctx.request_repaint();

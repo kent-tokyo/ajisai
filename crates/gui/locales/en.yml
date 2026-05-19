@@ -25,7 +25,7 @@ en:
     duplicate: "Duplicate (Ctrl+D)"
     delete: "Delete"
     no_selection: "Select a node to edit its properties."
-    shortcuts_hint: "Del — delete  Ctrl+Z — undo  Ctrl+D — duplicate"
+    shortcuts_hint: "Del — delete  Ctrl+Z — undo  Ctrl+D — duplicate  Ctrl+S — save"
   status:
     running: "Running..."
     nodes: "%{n} nodes  %{e} edges  %{z}%"
