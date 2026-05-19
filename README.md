@@ -81,10 +81,20 @@ The binary is generated at `target/release/ajisai-cli`.
 
 ## Quick Start
 
-### Run a pipeline
+### Run a pipeline (.hpl)
+
+Defines data transformation steps: reading, processing, and writing data.
 
 ```bash
 ajisai-cli run -p path/to/pipeline.hpl
+```
+
+### Run a workflow (.hwf)
+
+Defines orchestration logic: controlling pipeline execution order, file operations, and error handling.
+
+```bash
+ajisai-cli run-workflow -p path/to/workflow.hwf
 ```
 
 ### Validate a pipeline without executing it

@@ -81,10 +81,20 @@ cargo build --release
 
 ## クイックスタート
 
-### パイプラインを実行
+### パイプライン (.hpl) を実行
+
+データの読み込み・加工・書き出しなどの変換処理を定義したファイル。
 
 ```bash
 ajisai-cli run -p path/to/pipeline.hpl
+```
+
+### ワークフロー (.hwf) を実行
+
+パイプラインの実行順序の制御・ファイル操作・エラー処理などのオーケストレーションを定義したファイル。
+
+```bash
+ajisai-cli run-workflow -p path/to/workflow.hwf
 ```
 
 ### パイプラインを検証（実行なし）
