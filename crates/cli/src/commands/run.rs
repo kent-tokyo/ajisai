@@ -1,10 +1,9 @@
 use ajisai_core::{ExecutionContext, PipelineEngine};
 use ajisai_hop_compat::{hop_pipeline_to_ajisai, load_pipeline_file};
 use ajisai_transforms::default_registry;
-use indicatif::{ProgressBar, ProgressStyle};
+use crate::spinner::Spinner;
 use rust_i18n::t;
 use std::path::PathBuf;
-use std::time::Duration;
 use tracing::error;
 
 pub async fn run(pipeline_path: PathBuf, env_vars: Vec<String>) -> anyhow::Result<()> {
@@ -51,19 +50,14 @@ pub async fn run(pipeline_path: PathBuf, env_vars: Vec<String>) -> anyhow::Resul
     let registry = default_registry();
     let pipeline = hop_pipeline_to_ajisai(hop_pipeline, &registry)?;
 
-    let pb = ProgressBar::new_spinner();
-    pb.set_style(
-        ProgressStyle::default_spinner()
-            .template("{spinner:.cyan} {msg}")
-            .unwrap(),
+    let mut spinner = Spinner::new(
+        t!("run.nodes", count = node_count.to_string().as_str()).to_string(),
     );
-    pb.set_message(t!("run.nodes", count = node_count.to_string().as_str()).to_string());
-    pb.enable_steady_tick(Duration::from_millis(100));
 
     let engine = PipelineEngine::new(pipeline, ctx);
     match engine.run().await {
         Ok(stats) => {
-            pb.finish_and_clear();
+            spinner.finish_and_clear();
             println!(
                 "{}",
                 t!(
@@ -74,7 +68,7 @@ pub async fn run(pipeline_path: PathBuf, env_vars: Vec<String>) -> anyhow::Resul
             );
         }
         Err(e) => {
-            pb.finish_and_clear();
+            spinner.finish_and_clear();
             error!("Pipeline failed: {}", e);
             anyhow::bail!("{}", t!("run.error", error = e.to_string().as_str()));
         }

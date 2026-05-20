@@ -18,4 +18,3 @@ tracing           = { workspace = true }
 tracing-subscriber = { workspace = true }
 rust-i18n         = { workspace = true }
 anyhow            = "1"
-indicatif         = "0.17"
