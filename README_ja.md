@@ -41,7 +41,7 @@ Apache Hop 互換の超軽量・爆速 ETL エンジン。Rust で再構築。
 | **ビジュアル GUI** | ○ | ○ | ○ | × | × | × |
 | **CLI バッチ実行** | ○ | ○ | ○ | ○ | ○ | スクリプト |
 | **Apache Hop 互換** | .hpl 読み込み | ネイティブ | △ 共通祖先 | × | × | × |
-| **ファイル I/O** | CSV / JSON / DB | 多数 | 多数 | HDFS / S3 等 | DBのみ | CSV / Parquet 等 |
+| **ファイル I/O** | CSV / JSON / Excel / Parquet / XML / REST API | 多数 | 多数 | HDFS / S3 等 | DBのみ | CSV / Parquet 等 |
 | **対象規模** | 〜数億行 | 〜数千万行 | 〜数千万行 | 数十億行〜 | DBに依存 | 〜数億行 |
 | **Windows 対応** | ○ | ○ | ○ | △ | ○ | ○ |
 | **クラスター不要** | ○ | ○ | ○ | × | ○ | ○ |
@@ -119,18 +119,29 @@ ajisai-cli run -p pipeline.hpl -e INPUT_DIR=/data -e OUTPUT_DIR=/output
 
 ---
 
-## サポートする Transform (19種)
+## サポートする Transform (50種)
 
 ### I/O
 
 | Transform | 説明 |
 |---|---|
-| `CsvFileInput` | CSV ファイルの読み込み（ヘッダー検出・型変換対応）|
-| `CsvFileOutput` | CSV ファイルへの書き込み |
-| `JsonFileInput` | JSON ファイルの読み込み（Array / JSONL 両対応）|
-| `JsonFileOutput` | JSON ファイルへの書き込み（Array / JSONL 両対応）|
+| `CsvFileInput` | CSV ファイル読み込み |
+| `CsvFileOutput` | CSV ファイル書き込み |
+| `JsonFileInput` | JSON ファイル読み込み（Array / JSONL 両対応）|
+| `JsonFileOutput` | JSON ファイル書き込み（Array / JSONL 両対応）|
+| `ExcelFileInput` | Excel ファイル読み込み（.xlsx）|
+| `ExcelFileOutput` | Excel ファイル書き込み（.xlsx）|
+| `ParquetFileInput` | Parquet ファイル読み込み |
+| `ParquetFileOutput` | Parquet ファイル書き込み |
+| `XmlFileInput` | XML ファイル読み込み |
 | `TableInput` | DB テーブルを SQL で読み込み（SQLite / PostgreSQL / MySQL）|
 | `TableOutput` | DB テーブルへの書き込み（Insert / Upsert / Overwrite）|
+| `GenerateRows` | 固定データ行を生成 |
+| `RestClient` | HTTP GET / POST / PUT / DELETE |
+| `GetFileNames` | ディレクトリをスキャンしてファイルメタデータを行として出力 |
+| `LoadFileContent` | ファイル内容をフィールドに読み込み |
+| `WriteToFile` | フィールド値をファイルに書き出し |
+| `PipelineExecutor` | .hpl サブパイプラインを実行 |
 
 ### 変換
 
@@ -140,6 +151,7 @@ ajisai-cli run -p pipeline.hpl -e INPUT_DIR=/data -e OUTPUT_DIR=/output
 | `SelectValues` | フィールドの選択・名前変更・型キャスト |
 | `SortRows` | 複数フィールドによるソート（rayon 並列ソート）|
 | `AddConstants` | 固定値フィールドの追加 |
+| `AddSequence` | 連番フィールドの追加 |
 | `CalculatorStep` | フィールド計算（四則演算・文字列操作・型変換）|
 | `Deduplicate` | 重複行排除（全フィールド / キー指定）|
 | `IfNull` | NULL 値をデフォルト値で置換 |
@@ -147,6 +159,21 @@ ajisai-cli run -p pipeline.hpl -e INPUT_DIR=/data -e OUTPUT_DIR=/output
 | `ReplaceInString` | 文字列の検索・置換 |
 | `ConcatFields` | 複数フィールドを区切り文字で結合 |
 | `SplitFieldToRows` | 1 フィールドを区切り文字で複数行に展開 |
+| `MemoryGroupBy` | グループ集計（sum / avg / min / max / count）|
+| `AppendStreams` | 複数の入力ストリームを結合 |
+| `RowNormaliser` | 横持ち→縦持ち変換 |
+| `RowDenormaliser` | 縦持ち→横持ち変換 |
+| `WriteToLog` | 指定レベルで行をログ出力 |
+| `CloneRow` | 各行を N 回複製 |
+| `FieldSplitter` | フィールドを区切り文字で複数列に分割 |
+| `UniqueRows` | キーで最初の行を保持 |
+| `NumberRange` | 数値を範囲に分類 |
+| `ValueMapper` | ルックアップテーブルで値をマッピング |
+| `ExecuteSQL` | SQL を 1 回またはレコード単位で実行 |
+| `Dummy` | パススルー（何もしない）|
+| `Abort` | 条件付きでパイプラインを停止 |
+| `RegexEval` | 正規表現のキャプチャグループを抽出 |
+| `ScriptStep` | 各行に対して Rhai スクリプトを実行 |
 
 ### 結合 / ルックアップ
 
@@ -155,6 +182,14 @@ ajisai-cli run -p pipeline.hpl -e INPUT_DIR=/data -e OUTPUT_DIR=/output
 | `MergeJoin` | ソートマージ結合（Inner / Left / Right / Full）|
 | `StreamLookup` | インメモリハッシュ結合（ディメンションルックアップ）|
 | `DatabaseLookup` | SQL によるデータベースルックアップ |
+
+### 変数 / フロー制御
+
+| Transform | 説明 |
+|---|---|
+| `SetVariable` | パイプライン変数を設定 |
+| `GetVariable` | パイプライン変数をフィールドに読み込み |
+| `SwitchCase` | 値に応じて行を異なる出力先に振り分け |
 
 ---
 
@@ -208,7 +243,7 @@ ajisai/
 ├── crates/
 │   ├── core/          Row / RowSchema / Value 型定義、実行エンジン
 │   ├── transforms/    標準 Transform 実装群
-│   ├── hop-compat/    .hpl / .hwf XML パーサ、Apache Hop 互換レイヤー
+│   ├── hop-compat/    .hpl / .hwf / .ktr / .dtsx パーサ、Apache Hop 互換レイヤー
 │   ├── cli/           ajisai-cli バイナリ
 │   └── gui/           egui ビジュアルエディタ
 └── tests/fixtures/    サンプルパイプライン・テストデータ
@@ -235,9 +270,8 @@ ajisai/
 | Phase 1 | CLI + 基本 Transform + .hpl 互換 | 完成 |
 | Phase 2 | JSON / Calculator / Join / Lookup / DB / .hwf ワークフロー | 完成 |
 | Phase 3 | GUI — egui ビジュアルパイプラインエディタ | 完成 |
-| Phase 4A | 文字列 Transform 拡充（IfNull / StringOps / ConcatFields 等）| 完成 |
-| Phase 4B | GroupBy 集計、Switch/Case 分岐、複数出力ストリーム | 開発中 |
-| Phase 4C | Excel / XML / REST Client、クラウドストレージ | 計画中 |
+| Phase 4 | 多言語 UI・パッケージング・リリース CI | 完成 |
+| Phase 5 | Transform 50種：スクリプト（Rhai）・サブパイプライン・ファイル操作 | 完成 |
 
 ---
 

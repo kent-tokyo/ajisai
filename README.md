@@ -41,7 +41,7 @@ English | [日本語](README_ja.md) | [中文](README_zh.md)
 | **Visual GUI** | ○ | ○ | ○ | × | × | × |
 | **CLI batch execution** | ○ | ○ | ○ | ○ | ○ | Script |
 | **Apache Hop compatible** | reads `.hpl` | native | △ shared ancestry | × | × | × |
-| **File I/O** | CSV / JSON / DB | Many | Many | HDFS / S3 etc. | DB only | CSV / Parquet etc. |
+| **File I/O** | CSV / JSON / Excel / Parquet / XML / REST API | Many | Many | HDFS / S3 etc. | DB only | CSV / Parquet etc. |
 | **Scale target** | up to ~100M rows | up to ~10M rows | up to ~10M rows | billions+ | DB-dependent | up to ~100M rows |
 | **Windows support** | ○ | ○ | ○ | △ | ○ | ○ |
 | **No cluster required** | ○ | ○ | ○ | × | ○ | ○ |
@@ -119,18 +119,29 @@ Reference them inside the pipeline as `${INPUT_DIR}`.
 
 ---
 
-## Supported Transforms (19)
+## Supported Transforms (50)
 
 ### I/O
 
 | Transform | Description |
 |---|---|
-| `CsvFileInput` | Read CSV files (auto header detection, type coercion) |
+| `CsvFileInput` | Read CSV files |
 | `CsvFileOutput` | Write CSV files |
 | `JsonFileInput` | Read JSON files (array or JSONL format) |
 | `JsonFileOutput` | Write JSON files (array or JSONL format) |
+| `ExcelFileInput` | Read Excel files (.xlsx) |
+| `ExcelFileOutput` | Write Excel files (.xlsx) |
+| `ParquetFileInput` | Read Parquet files |
+| `ParquetFileOutput` | Write Parquet files |
+| `XmlFileInput` | Read XML files |
 | `TableInput` | Read from a database table via SQL (SQLite / PostgreSQL / MySQL) |
 | `TableOutput` | Write rows to a database table (Insert / Upsert / Overwrite) |
+| `GenerateRows` | Generate rows from inline data |
+| `RestClient` | HTTP GET / POST / PUT / DELETE |
+| `GetFileNames` | Scan directory, output file metadata as rows |
+| `LoadFileContent` | Read file content into a field |
+| `WriteToFile` | Write field value to a file |
+| `PipelineExecutor` | Run a .hpl sub-pipeline |
 
 ### Transformation
 
@@ -140,6 +151,7 @@ Reference them inside the pipeline as `${INPUT_DIR}`.
 | `SelectValues` | Select, rename, and cast fields |
 | `SortRows` | Sort by multiple fields (rayon parallel sort) |
 | `AddConstants` | Append constant-value fields to each row |
+| `AddSequence` | Auto-increment sequence field |
 | `CalculatorStep` | Compute new fields: arithmetic, string ops, type casts |
 | `Deduplicate` | Remove duplicate rows by all fields or a key subset |
 | `IfNull` | Replace null values with typed defaults |
@@ -147,6 +159,21 @@ Reference them inside the pipeline as `${INPUT_DIR}`.
 | `ReplaceInString` | Search and replace across multiple field/pattern pairs |
 | `ConcatFields` | Join multiple fields with a separator into a new field |
 | `SplitFieldToRows` | Expand one delimited field into multiple rows |
+| `MemoryGroupBy` | Group-by aggregation (sum / avg / min / max / count) |
+| `AppendStreams` | Merge multiple input streams |
+| `RowNormaliser` | Pivot wide to long |
+| `RowDenormaliser` | Pivot long to wide |
+| `WriteToLog` | Log rows at a given level |
+| `CloneRow` | Duplicate each row N times |
+| `FieldSplitter` | Split field by delimiter into multiple columns |
+| `UniqueRows` | Keep first occurrence per key |
+| `NumberRange` | Classify numeric values into bands |
+| `ValueMapper` | Map field values via lookup table |
+| `ExecuteSQL` | Execute SQL once or per row |
+| `Dummy` | Pass-through (no-op) |
+| `Abort` | Abort pipeline on condition |
+| `RegexEval` | Extract regex capture groups |
+| `ScriptStep` | Execute Rhai script per row |
 
 ### Join / Lookup
 
@@ -155,6 +182,14 @@ Reference them inside the pipeline as `${INPUT_DIR}`.
 | `MergeJoin` | Sort-merge join of two sorted streams (Inner / Left / Right / Full) |
 | `StreamLookup` | In-memory hash join for dimension lookups |
 | `DatabaseLookup` | Parameterized SQL lookup against a database |
+
+### Variables / Flow
+
+| Transform | Description |
+|---|---|
+| `SetVariable` | Set a pipeline variable |
+| `GetVariable` | Read a pipeline variable into a field |
+| `SwitchCase` | Route rows to different outputs by value |
 
 ---
 
@@ -208,7 +243,7 @@ ajisai/
 ├── crates/
 │   ├── core/          Row / RowSchema / Value types, pipeline execution engine
 │   ├── transforms/    Built-in transform implementations
-│   ├── hop-compat/    .hpl / .hwf XML parser, Apache Hop compatibility layer
+│   ├── hop-compat/    .hpl / .hwf / .ktr / .dtsx parser, Apache Hop compatibility layer
 │   ├── cli/           ajisai-cli binary
 │   └── gui/           egui visual pipeline editor
 └── tests/fixtures/    Sample pipelines and test data
@@ -235,9 +270,8 @@ ajisai/
 | Phase 1 | CLI + core transforms + .hpl compatibility | Done |
 | Phase 2 | JSON / Calculator / Join / Lookup / DB / .hwf workflow | Done |
 | Phase 3 | GUI — egui visual pipeline editor | Done |
-| Phase 4A | String transforms: IfNull / StringOps / ConcatFields / Split | Done |
-| Phase 4B | GroupBy aggregation, Switch/Case routing, multi-output streams | In progress |
-| Phase 4C | Excel / XML / REST Client, cloud storage | Planned |
+| Phase 4 | Multilingual UI, packaging, release CI | Done |
+| Phase 5 | 50 transforms: scripting (Rhai), sub-pipeline, file ops | Done |
 
 ---
 
