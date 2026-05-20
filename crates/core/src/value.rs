@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
 use std::fmt;
 use std::sync::Arc;
 
@@ -90,6 +91,23 @@ impl Value {
             Some(*b)
         } else {
             None
+        }
+    }
+
+    /// Compare two values for ordering. Mixed numeric types (Int vs Float) are
+    /// compared after widening to f64. Null sorts before all other values.
+    pub fn compare(&self, other: &Value) -> Ordering {
+        match (self, other) {
+            (Value::Null, Value::Null) => Ordering::Equal,
+            (Value::Null, _) => Ordering::Less,
+            (_, Value::Null) => Ordering::Greater,
+            (Value::Bool(a), Value::Bool(b)) => a.cmp(b),
+            (Value::Int(a), Value::Int(b)) => a.cmp(b),
+            (Value::Float(a), Value::Float(b)) => a.partial_cmp(b).unwrap_or(Ordering::Equal),
+            (Value::Int(a), Value::Float(b)) => (*a as f64).partial_cmp(b).unwrap_or(Ordering::Equal),
+            (Value::Float(a), Value::Int(b)) => a.partial_cmp(&(*b as f64)).unwrap_or(Ordering::Equal),
+            (Value::Str(a), Value::Str(b)) => a.cmp(b),
+            (a, b) => a.to_display_string().cmp(&b.to_display_string()),
         }
     }
 

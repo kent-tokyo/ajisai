@@ -56,6 +56,14 @@ pub trait Transform: Send {
     async fn load_side_input(&mut self, _idx: usize, _rows: Vec<Row>) -> Result<()> {
         Ok(())
     }
+
+    /// Routing transforms (e.g. SwitchCase) override this to direct each output row
+    /// to a specific downstream node by name.
+    /// Return `None` to broadcast the row to all connected downstream nodes (default).
+    /// Return `Some(target_node_id)` to send only to that node.
+    fn route(&self, _row: &Row) -> Option<String> {
+        None
+    }
 }
 
 /// Prototype factory: given a serialized config, construct a boxed Transform

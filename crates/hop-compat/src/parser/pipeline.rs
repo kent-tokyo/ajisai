@@ -156,7 +156,7 @@ fn in_context(stack: &[String], tag: &str) -> bool {
 /// The transform registry is used to instantiate each transform.
 pub fn hop_pipeline_to_ajisai(
     hop: HopPipeline,
-    registry: &ajisai_transforms::TransformRegistry,
+    registry: &ajisai_core::TransformRegistry,
 ) -> Result<ajisai_core::Pipeline, AjisaiError> {
     let mut pipeline = ajisai_core::Pipeline::new(hop.name);
 
@@ -187,6 +187,42 @@ fn map_transform_type(hop_type: &str) -> &str {
         "SelectValues" => "SelectValues",
         "SortRows" => "SortRows",
         "AddConstants" | "Constant" => "AddConstants",
+        // Priority B additions
+        "AddSequence" => "AddSequence",
+        "SetVariable" | "SetVariables" => "SetVariable",
+        "GetVariable" | "GetVariables" => "GetVariable",
+        "GetXMLData" | "XMLInput" => "XmlFileInput",
+        "RestClient" => "RestClient",
+        "ParquetFileInput" => "ParquetFileInput",
+        "ParquetFileOutput" => "ParquetFileOutput",
+        "RowNormaliser" => "RowNormaliser",
+        "RowDenormaliser" => "RowDenormaliser",
+        // Priority A additions
+        "MemoryGroupBy" | "GroupBy" => "MemoryGroupBy",
+        "AppendStream" | "AppendStreams" => "AppendStreams",
+        "SwitchCase" => "SwitchCase",
+        "ExcelInput" | "MicrosoftExcelInput" => "ExcelFileInput",
+        "ExcelOutput" | "MicrosoftExcelOutput" => "ExcelFileOutput",
+        "WriteToLog" => "WriteToLog",
+        "RowGenerator" | "DataGrid" => "GenerateRows",
+        // Priority C Group C additions
+        "GetFileNames" => "GetFileNames",
+        "LoadFileContent" => "LoadFileContent",
+        "WriteToFile" => "WriteToFile",
+        // Priority C Group B additions
+        "Dummy" | "NullStep" => "Dummy",
+        "Abort" => "Abort",
+        "RegexEval" => "RegexEval",
+        // Group D / E
+        "ScriptStep" | "ModifiedJavaScriptValue" | "ScriptValueMod" => "ScriptStep",
+        "PipelineExecutor" | "PipelineExecutorPlugin" => "PipelineExecutor",
+        // Priority C Group A
+        "CloneRow" => "CloneRow",
+        "FieldSplitter" => "FieldSplitter",
+        "UniqueRows" => "UniqueRows",
+        "NumberRange" => "NumberRange",
+        "ValueMapper" => "ValueMapper",
+        "ExecuteSQL" | "ExecSQL" => "ExecuteSQL",
         other => other,
     }
 }

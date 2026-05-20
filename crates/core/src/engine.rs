@@ -8,6 +8,38 @@ use std::collections::HashMap;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};
 
+/// Send a row to outgoing channels.
+/// - `target = None`  → broadcast to all senders
+/// - `target = Some(id)` → send only to the matching sender; error if not found
+async fn send_row(
+    row: &Row,
+    target: Option<&str>,
+    senders: &[(String, mpsc::Sender<Row>)],
+) -> Result<()> {
+    match target {
+        None => {
+            for (_, tx) in senders {
+                if tx.send(row.clone()).await.is_err() {
+                    return Err(AjisaiError::Pipeline("Downstream channel closed".into()));
+                }
+            }
+        }
+        Some(t) => {
+            let tx = senders
+                .iter()
+                .find(|(id, _)| id == t)
+                .map(|(_, tx)| tx)
+                .ok_or_else(|| {
+                    AjisaiError::Pipeline(format!("No route found for target '{}'", t))
+                })?;
+            if tx.send(row.clone()).await.is_err() {
+                return Err(AjisaiError::Pipeline("Downstream channel closed".into()));
+            }
+        }
+    }
+    Ok(())
+}
+
 const CHANNEL_BUFFER: usize = 1024;
 
 #[derive(Debug, Default)]
@@ -76,13 +108,17 @@ impl PipelineEngine {
             let node_id = node.id.clone();
             let ctx = context.clone();
 
-            // Outgoing senders for this node
-            let out_senders: Vec<mpsc::Sender<Row>> = self
+            // Outgoing senders for this node: (target_node_id, sender)
+            let out_senders: Vec<(String, mpsc::Sender<Row>)> = self
                 .pipeline
                 .hops
                 .iter()
                 .filter(|h| h.from == node_id)
-                .filter_map(|h| senders.remove(&(h.from.clone(), h.to.clone())))
+                .filter_map(|h| {
+                    senders
+                        .remove(&(h.from.clone(), h.to.clone()))
+                        .map(|tx| (h.to.clone(), tx))
+                })
                 .collect();
 
             // Incoming receivers in hop-declaration order (side inputs are the last N)
@@ -107,10 +143,8 @@ impl PipelineEngine {
 
                     let fan_out = async move {
                         while let Some(row) = produce_rx.recv().await {
-                            for tx in &out_senders {
-                                if tx.send(row.clone()).await.is_err() {
-                                    break;
-                                }
+                            if send_row(&row, None, &out_senders).await.is_err() {
+                                break;
                             }
                         }
                     };
@@ -141,13 +175,12 @@ impl PipelineEngine {
                         while let Some(row) = rx.recv().await {
                             let out_rows = node.transform.process(row).await?;
                             for out_row in out_rows {
-                                for tx in &out_senders {
-                                    if tx.send(out_row.clone()).await.is_err() {
-                                        return Err(AjisaiError::Pipeline(
-                                            "Downstream channel closed".into(),
-                                        ));
-                                    }
-                                }
+                                send_row(
+                                    &out_row,
+                                    node.transform.route(&out_row).as_deref(),
+                                    &out_senders,
+                                )
+                                .await?;
                             }
                         }
                     }
@@ -155,13 +188,12 @@ impl PipelineEngine {
                     // Flush buffered output (e.g., SortRows emits here)
                     let flush_rows = node.transform.flush().await?;
                     for out_row in flush_rows {
-                        for tx in &out_senders {
-                            if tx.send(out_row.clone()).await.is_err() {
-                                return Err(AjisaiError::Pipeline(
-                                    "Downstream channel closed".into(),
-                                ));
-                            }
-                        }
+                        send_row(
+                            &out_row,
+                            node.transform.route(&out_row).as_deref(),
+                            &out_senders,
+                        )
+                        .await?;
                     }
                 }
 

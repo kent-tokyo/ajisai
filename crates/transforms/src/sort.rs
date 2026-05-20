@@ -45,24 +45,6 @@ impl SortRows {
         Ok(Box::new(Self::new(config)))
     }
 
-    fn compare_values(a: &Value, b: &Value) -> Ordering {
-        match (a, b) {
-            (Value::Int(x), Value::Int(y)) => x.cmp(y),
-            (Value::Float(x), Value::Float(y)) => x.partial_cmp(y).unwrap_or(Ordering::Equal),
-            (Value::Int(x), Value::Float(y)) => {
-                (*x as f64).partial_cmp(y).unwrap_or(Ordering::Equal)
-            }
-            (Value::Float(x), Value::Int(y)) => {
-                x.partial_cmp(&(*y as f64)).unwrap_or(Ordering::Equal)
-            }
-            (Value::Str(x), Value::Str(y)) => x.cmp(y),
-            (Value::Bool(x), Value::Bool(y)) => x.cmp(y),
-            (Value::Null, Value::Null) => Ordering::Equal,
-            (Value::Null, _) => Ordering::Less,
-            (_, Value::Null) => Ordering::Greater,
-            (a, b) => a.to_display_string().cmp(&b.to_display_string()),
-        }
-    }
 }
 
 #[async_trait]
@@ -107,7 +89,7 @@ impl SortRows {
             for key in &keys {
                 let va = a.get(&key.field).unwrap_or(&Value::Null);
                 let vb = b.get(&key.field).unwrap_or(&Value::Null);
-                let ord = Self::compare_values(va, vb);
+                let ord = va.compare(vb);
                 if ord != Ordering::Equal {
                     return if key.ascending { ord } else { ord.reverse() };
                 }

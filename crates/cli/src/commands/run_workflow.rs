@@ -1,5 +1,6 @@
 use ajisai_core::{ExecutionContext, WorkflowEngine};
 use ajisai_hop_compat::{hop_workflow_to_ajisai, load_workflow_file};
+use ajisai_transforms::default_registry;
 use rust_i18n::t;
 use std::path::PathBuf;
 use tracing::error;
@@ -40,7 +41,7 @@ pub async fn run_workflow(workflow_path: PathBuf, env_vars: Vec<String>) -> anyh
     println!("{}", t!("workflow.start", name = name.as_str()));
 
     let base_dir = workflow_path.parent().unwrap_or(std::path::Path::new("."));
-    let workflow = hop_workflow_to_ajisai(hop_workflow, base_dir)?;
+    let workflow = hop_workflow_to_ajisai(hop_workflow, base_dir, default_registry)?;
 
     let engine = WorkflowEngine::new(workflow, ctx);
     match engine.run().await {

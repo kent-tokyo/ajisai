@@ -1,14 +1,18 @@
 use crate::model::hop_workflow::HopWorkflow;
 use ajisai_core::{
     workflow::{Action, ActionResult, HopEvaluation, Workflow},
-    AjisaiError, ExecutionContext,
+    AjisaiError, ExecutionContext, TransformRegistry,
 };
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+type RegistryFactory = Arc<dyn Fn() -> TransformRegistry + Send + Sync>;
 
 /// Action that runs a pipeline (.hpl file)
 pub struct PipelineAction {
     pub name: String,
     pub pipeline_path: PathBuf,
+    registry_factory: RegistryFactory,
 }
 
 #[async_trait::async_trait]
@@ -26,7 +30,7 @@ impl Action for PipelineAction {
             Err(e) => return ActionResult::err(e.to_string()),
         };
 
-        let registry = ajisai_transforms::default_registry();
+        let registry = (self.registry_factory)();
         let pipeline =
             match crate::parser::pipeline::hop_pipeline_to_ajisai(hop_pipeline, &registry) {
                 Ok(p) => p,
@@ -54,7 +58,13 @@ mod ajisai_hop_compat_inner {
 
 /// Convert a HopWorkflow IR into an ajisai-core Workflow.
 /// `base_dir` is used to resolve relative pipeline file paths.
-pub fn hop_workflow_to_ajisai(hw: HopWorkflow, base_dir: &Path) -> Result<Workflow, AjisaiError> {
+/// `registry_factory` is called once per pipeline action to create a fresh registry.
+pub fn hop_workflow_to_ajisai(
+    hw: HopWorkflow,
+    base_dir: &Path,
+    registry_factory: impl Fn() -> TransformRegistry + Send + Sync + 'static,
+) -> Result<Workflow, AjisaiError> {
+    let factory: RegistryFactory = Arc::new(registry_factory);
     let mut workflow = Workflow::new(hw.name);
 
     for action in hw.actions {
@@ -65,7 +75,6 @@ pub fn hop_workflow_to_ajisai(hw: HopWorkflow, base_dir: &Path) -> Result<Workfl
             .unwrap_or("");
 
         let path = if pipeline_file.is_empty() {
-            // Fallback: look for <action_name>.hpl next to the .hwf file
             base_dir.join(format!("{}.hpl", action.name))
         } else {
             let p = Path::new(pipeline_file);
@@ -82,6 +91,7 @@ pub fn hop_workflow_to_ajisai(hw: HopWorkflow, base_dir: &Path) -> Result<Workfl
             Box::new(PipelineAction {
                 name: action.name,
                 pipeline_path: path,
+                registry_factory: Arc::clone(&factory),
             }),
         );
     }

@@ -121,12 +121,7 @@ impl MergeJoin {
     }
 
     fn key_ord(left_key: &Value, right_key: &Value) -> Ordering {
-        match (left_key, right_key) {
-            (Value::Int(a), Value::Int(b)) => a.cmp(b),
-            (Value::Float(a), Value::Float(b)) => a.partial_cmp(b).unwrap_or(Ordering::Equal),
-            (Value::Str(a), Value::Str(b)) => a.cmp(b),
-            (a, b) => a.to_display_string().cmp(&b.to_display_string()),
-        }
+        left_key.compare(right_key)
     }
 
     /// Ensure output_schema is built and return a clone.
