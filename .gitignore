@@ -1,5 +1,7 @@
 target/
-tasks/
 .claude/
+
+# Personal / local files
 memo.txt
 CLAUDE.md
+tasks/
