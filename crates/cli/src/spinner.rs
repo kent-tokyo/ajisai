@@ -23,14 +23,23 @@ impl Spinner {
         let handle = thread::spawn(move || {
             let mut i = 0usize;
             while !stop2.load(Ordering::Relaxed) {
-                print!("\r{}{}{} {}", CYAN, FRAMES[i % FRAMES.len()], RESET, message);
+                print!(
+                    "\r{}{}{} {}",
+                    CYAN,
+                    FRAMES[i % FRAMES.len()],
+                    RESET,
+                    message
+                );
                 std::io::stdout().flush().ok();
                 i += 1;
                 thread::sleep(Duration::from_millis(100));
             }
         });
 
-        Self { stop, handle: Some(handle) }
+        Self {
+            stop,
+            handle: Some(handle),
+        }
     }
 
     pub fn finish_and_clear(&mut self) {

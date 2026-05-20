@@ -1,7 +1,7 @@
+use crate::spinner::Spinner;
 use ajisai_core::{ExecutionContext, PipelineEngine};
 use ajisai_hop_compat::{hop_pipeline_to_ajisai, load_pipeline_file};
 use ajisai_transforms::default_registry;
-use crate::spinner::Spinner;
 use rust_i18n::t;
 use std::path::PathBuf;
 use tracing::error;
@@ -50,9 +50,8 @@ pub async fn run(pipeline_path: PathBuf, env_vars: Vec<String>) -> anyhow::Resul
     let registry = default_registry();
     let pipeline = hop_pipeline_to_ajisai(hop_pipeline, &registry)?;
 
-    let mut spinner = Spinner::new(
-        t!("run.nodes", count = node_count.to_string().as_str()).to_string(),
-    );
+    let mut spinner =
+        Spinner::new(t!("run.nodes", count = node_count.to_string().as_str()).to_string());
 
     let engine = PipelineEngine::new(pipeline, ctx);
     match engine.run().await {
