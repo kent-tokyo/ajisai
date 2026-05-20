@@ -95,15 +95,18 @@ impl Transform for AddConstants {
     }
 
     async fn process(&mut self, row: Row) -> Result<Vec<Row>> {
-        let schema = self.output_schema.get_or_insert_with(|| {
-            let mut fields = row.schema.fields.clone();
-            for cf in &self.config.fields {
-                if let Ok((field, _)) = Self::parse_constant(cf) {
-                    fields.push(field);
+        let schema = self
+            .output_schema
+            .get_or_insert_with(|| {
+                let mut fields = row.schema.fields.clone();
+                for cf in &self.config.fields {
+                    if let Ok((field, _)) = Self::parse_constant(cf) {
+                        fields.push(field);
+                    }
                 }
-            }
-            Arc::new(RowSchema::new(fields))
-        }).clone();
+                Arc::new(RowSchema::new(fields))
+            })
+            .clone();
 
         let mut values = row.values.clone();
         values.extend(self.const_values.iter().cloned());

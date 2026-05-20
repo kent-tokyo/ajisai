@@ -40,7 +40,10 @@ pub struct LoadFileContent {
 
 impl LoadFileContent {
     pub fn new(config: LoadFileContentConfig) -> Self {
-        Self { config, output_schema: None }
+        Self {
+            config,
+            output_schema: None,
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {
@@ -84,20 +87,28 @@ impl Transform for LoadFileContent {
         let safe_path = resolve_safe_path(&path_raw)?;
 
         let content = match self.config.encoding {
-            Encoding::Utf8 => std::fs::read_to_string(&safe_path)
-                .map_err(AjisaiError::Io)?,
+            Encoding::Utf8 => std::fs::read_to_string(&safe_path).map_err(AjisaiError::Io)?,
             Encoding::Base64 => {
                 let bytes = std::fs::read(&safe_path).map_err(AjisaiError::Io)?;
                 let mut out = String::with_capacity(bytes.len() * 4 / 3 + 4);
-                const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+                const CHARS: &[u8] =
+                    b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
                 for chunk in bytes.chunks(3) {
                     let b0 = chunk[0];
                     let b1 = *chunk.get(1).unwrap_or(&0);
                     let b2 = *chunk.get(2).unwrap_or(&0);
                     out.push(CHARS[(b0 >> 2) as usize] as char);
                     out.push(CHARS[((b0 & 0x3) << 4 | b1 >> 4) as usize] as char);
-                    if chunk.len() > 1 { out.push(CHARS[((b1 & 0xf) << 2 | b2 >> 6) as usize] as char); } else { out.push('='); }
-                    if chunk.len() > 2 { out.push(CHARS[(b2 & 0x3f) as usize] as char); } else { out.push('='); }
+                    if chunk.len() > 1 {
+                        out.push(CHARS[((b1 & 0xf) << 2 | b2 >> 6) as usize] as char);
+                    } else {
+                        out.push('=');
+                    }
+                    if chunk.len() > 2 {
+                        out.push(CHARS[(b2 & 0x3f) as usize] as char);
+                    } else {
+                        out.push('=');
+                    }
                 }
                 out
             }
@@ -117,9 +128,9 @@ impl Transform for LoadFileContent {
 mod tests {
     use super::*;
     use ajisai_core::value::{Field, RowSchema, Value, ValueType};
+    use std::io::Write as _;
     use std::sync::Arc;
     use tempfile::NamedTempFile;
-    use std::io::Write as _;
 
     fn make_row(path: &str) -> Row {
         let schema = Arc::new(RowSchema::new(vec![Field::new("path", ValueType::String)]));
@@ -138,7 +149,13 @@ mod tests {
         });
         t.open(&ExecutionContext::new()).await.unwrap();
 
-        let out = t.process(make_row(f.path().to_str().unwrap())).await.unwrap();
-        assert_eq!(out[0].get("content"), Some(&Value::Str("hello world".into())));
+        let out = t
+            .process(make_row(f.path().to_str().unwrap()))
+            .await
+            .unwrap();
+        assert_eq!(
+            out[0].get("content"),
+            Some(&Value::Str("hello world".into()))
+        );
     }
 }

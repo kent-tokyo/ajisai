@@ -4,10 +4,14 @@ use arrow_schema::DataType;
 
 pub fn arrow_to_value_type(dt: &DataType) -> ValueType {
     match dt {
-        DataType::Int8 | DataType::Int16 | DataType::Int32 | DataType::Int64
-        | DataType::UInt8 | DataType::UInt16 | DataType::UInt32 | DataType::UInt64 => {
-            ValueType::Integer
-        }
+        DataType::Int8
+        | DataType::Int16
+        | DataType::Int32
+        | DataType::Int64
+        | DataType::UInt8
+        | DataType::UInt16
+        | DataType::UInt32
+        | DataType::UInt64 => ValueType::Integer,
         DataType::Float16 | DataType::Float32 | DataType::Float64 => ValueType::Float,
         DataType::Boolean => ValueType::Boolean,
         DataType::Date32 | DataType::Date64 => ValueType::Date,

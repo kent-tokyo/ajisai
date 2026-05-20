@@ -70,7 +70,8 @@ impl Transform for IfNull {
         for rep in &self.config.replacements {
             if let Some(idx) = row.schema.fields.iter().position(|f| f.name == rep.field) {
                 if values[idx].is_null() {
-                    values[idx] = Self::coerce(&rep.default_value, &row.schema.fields[idx].value_type);
+                    values[idx] =
+                        Self::coerce(&rep.default_value, &row.schema.fields[idx].value_type);
                 }
             }
         }

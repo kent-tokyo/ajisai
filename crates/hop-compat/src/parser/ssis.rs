@@ -51,9 +51,7 @@ pub fn parse_dtsx(xml: &str) -> Result<HopPipeline, AjisaiError> {
                 // Detect Data Flow Task: Executable with CreationName="Microsoft.Pipeline"
                 if local == "Executable" {
                     let attrs = collect_dts_attrs(&e);
-                    if attrs.get("CreationName").map(|s| s.as_str())
-                        == Some("Microsoft.Pipeline")
-                    {
+                    if attrs.get("CreationName").map(|s| s.as_str()) == Some("Microsoft.Pipeline") {
                         in_data_flow = true;
                         if pipeline.name.is_empty() {
                             if let Some(n) = attrs.get("ObjectName") {
@@ -62,9 +60,7 @@ pub fn parse_dtsx(xml: &str) -> Result<HopPipeline, AjisaiError> {
                         }
                     }
                     // Set overall pipeline name from outermost Package
-                    if attrs.get("CreationName").map(|s| s.as_str())
-                        == Some("Microsoft.Package")
-                    {
+                    if attrs.get("CreationName").map(|s| s.as_str()) == Some("Microsoft.Package") {
                         if let Some(n) = attrs.get("ObjectName") {
                             pipeline.name = n.clone();
                         }
@@ -107,16 +103,13 @@ pub fn parse_dtsx(xml: &str) -> Result<HopPipeline, AjisaiError> {
                 // Parse path elements to build hops
                 if local == "path" && in_pipeline_section {
                     let attrs = collect_plain_attrs(&e);
-                    if let (Some(start), Some(end)) =
-                        (attrs.get("startId"), attrs.get("endId"))
-                    {
+                    if let (Some(start), Some(end)) = (attrs.get("startId"), attrs.get("endId")) {
                         // Path IDs look like "{GUID}.Outputs[name]" or "{GUID}.output[...]"
                         let from_id = extract_component_id(start);
                         let to_id = extract_component_id(end);
-                        if let (Some(from_name), Some(to_name)) = (
-                            id_to_name.get(from_id),
-                            id_to_name.get(to_id),
-                        ) {
+                        if let (Some(from_name), Some(to_name)) =
+                            (id_to_name.get(from_id), id_to_name.get(to_id))
+                        {
                             pipeline.order.push(HopHop {
                                 from: from_name.clone(),
                                 to: to_name.clone(),
@@ -161,15 +154,12 @@ pub fn parse_dtsx(xml: &str) -> Result<HopPipeline, AjisaiError> {
                 // Self-closing <path .../> elements
                 if local == "path" && in_pipeline_section {
                     let attrs = collect_plain_attrs(&e);
-                    if let (Some(start), Some(end)) =
-                        (attrs.get("startId"), attrs.get("endId"))
-                    {
+                    if let (Some(start), Some(end)) = (attrs.get("startId"), attrs.get("endId")) {
                         let from_id = extract_component_id(start);
                         let to_id = extract_component_id(end);
-                        if let (Some(from_name), Some(to_name)) = (
-                            id_to_name.get(from_id),
-                            id_to_name.get(to_id),
-                        ) {
+                        if let (Some(from_name), Some(to_name)) =
+                            (id_to_name.get(from_id), id_to_name.get(to_id))
+                        {
                             pipeline.order.push(HopHop {
                                 from: from_name.clone(),
                                 to: to_name.clone(),
@@ -233,10 +223,7 @@ fn extract_component_id(endpoint: &str) -> &str {
 /// Map SSIS component class IDs (GUIDs) to ajisai transform type names.
 fn map_ssis_class_id(class_id: &str) -> Option<&'static str> {
     // Normalize: strip braces, uppercase
-    let normalized = class_id
-        .trim_matches('{')
-        .trim_matches('}')
-        .to_uppercase();
+    let normalized = class_id.trim_matches('{').trim_matches('}').to_uppercase();
     match normalized.as_str() {
         // I/O
         "5ACD952A-F16A-11D2-9A7A-00C04F72DB40" => Some("CsvFileInput"),

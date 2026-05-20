@@ -104,7 +104,10 @@ mod tests {
     use std::sync::Arc;
 
     fn make_row(status: &str) -> Row {
-        let schema = Arc::new(RowSchema::new(vec![Field::new("status", ValueType::String)]));
+        let schema = Arc::new(RowSchema::new(vec![Field::new(
+            "status",
+            ValueType::String,
+        )]));
         Row::new(schema, vec![Value::Str(status.into())])
     }
 
@@ -113,8 +116,14 @@ mod tests {
             field: "status".into(),
             output_field: None,
             mappings: vec![
-                MappingEntry { source_value: "Y".into(), target_value: "Yes".into() },
-                MappingEntry { source_value: "N".into(), target_value: "No".into() },
+                MappingEntry {
+                    source_value: "Y".into(),
+                    target_value: "Yes".into(),
+                },
+                MappingEntry {
+                    source_value: "N".into(),
+                    target_value: "No".into(),
+                },
             ],
             default_value: Some("Unknown".into()),
         })

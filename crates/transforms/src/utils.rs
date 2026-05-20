@@ -1,4 +1,8 @@
-use ajisai_core::{error::Result, value::{Value, ValueType}, AjisaiError};
+use ajisai_core::{
+    error::Result,
+    value::{Value, ValueType},
+    AjisaiError,
+};
 
 /// Coerce a string value to the target ValueType.
 /// Returns `Value::Null` when parsing fails for numeric types.
@@ -6,7 +10,9 @@ pub fn coerce(s: &str, vt: &ValueType) -> Value {
     match vt {
         ValueType::Integer => s.parse::<i64>().map(Value::Int).unwrap_or(Value::Null),
         ValueType::Float => s.parse::<f64>().map(Value::Float).unwrap_or(Value::Null),
-        ValueType::Boolean => Value::Bool(matches!(s.to_lowercase().as_str(), "true" | "1" | "yes")),
+        ValueType::Boolean => {
+            Value::Bool(matches!(s.to_lowercase().as_str(), "true" | "1" | "yes"))
+        }
         _ => Value::Str(s.to_owned()),
     }
 }

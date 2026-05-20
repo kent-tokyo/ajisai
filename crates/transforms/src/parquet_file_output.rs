@@ -5,9 +5,7 @@ use ajisai_core::{
     value::{Row, RowSchema, ValueType},
     AjisaiError, Transform,
 };
-use arrow_array::{
-    ArrayRef, BooleanArray, Float64Array, Int64Array, RecordBatch, StringArray,
-};
+use arrow_array::{ArrayRef, BooleanArray, Float64Array, Int64Array, RecordBatch, StringArray};
 use arrow_schema::{Field as ArrowField, Schema};
 use async_trait::async_trait;
 use parquet::arrow::ArrowWriter;
@@ -36,7 +34,11 @@ pub struct ParquetFileOutput {
 impl ParquetFileOutput {
     pub fn new(config: ParquetFileOutputConfig) -> Self {
         let resolved_path = config.filename.clone();
-        Self { config, resolved_path, buffer: Vec::new() }
+        Self {
+            config,
+            resolved_path,
+            buffer: Vec::new(),
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {
@@ -49,7 +51,13 @@ impl ParquetFileOutput {
         let fields: Vec<ArrowField> = schema
             .fields
             .iter()
-            .map(|f| ArrowField::new(f.name.as_str(), crate::parquet_utils::value_type_to_arrow(&f.value_type), true))
+            .map(|f| {
+                ArrowField::new(
+                    f.name.as_str(),
+                    crate::parquet_utils::value_type_to_arrow(&f.value_type),
+                    true,
+                )
+            })
             .collect();
         Schema::new(fields)
     }
@@ -88,9 +96,16 @@ impl ParquetFileOutput {
                     _ => {
                         let vals: Vec<Option<String>> = (0..n)
                             .map(|r| {
-                                rows[r].get_by_index(col_idx).map(|v| {
-                                    if v.is_null() { None } else { Some(v.to_display_string()) }
-                                }).flatten()
+                                rows[r]
+                                    .get_by_index(col_idx)
+                                    .map(|v| {
+                                        if v.is_null() {
+                                            None
+                                        } else {
+                                            Some(v.to_display_string())
+                                        }
+                                    })
+                                    .flatten()
                             })
                             .collect();
                         Arc::new(StringArray::from(vals))
@@ -146,8 +161,9 @@ impl Transform for ParquetFileOutput {
         let safe_path = resolve_safe_path(&self.resolved_path)?;
         let path_str = self.resolved_path.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let file = std::fs::File::create(&safe_path)
-                .map_err(|e| AjisaiError::Config(format!("Cannot create Parquet file '{}': {}", path_str, e)))?;
+            let file = std::fs::File::create(&safe_path).map_err(|e| {
+                AjisaiError::Config(format!("Cannot create Parquet file '{}': {}", path_str, e))
+            })?;
             let mut writer = ArrowWriter::try_new(file, arrow_schema, Some(props))
                 .map_err(|e| AjisaiError::Config(format!("Cannot create Parquet writer: {}", e)))?;
             writer

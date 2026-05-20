@@ -30,7 +30,11 @@ pub struct AddSequence {
 impl AddSequence {
     pub fn new(config: AddSequenceConfig) -> Self {
         let counter = config.start - config.increment;
-        Self { config, counter, output_schema: None }
+        Self {
+            config,
+            counter,
+            output_schema: None,
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {

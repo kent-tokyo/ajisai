@@ -37,7 +37,9 @@ pub fn parse_ktr(xml: &str) -> Result<HopPipeline, AjisaiError> {
                 current_text.clear();
 
                 match tag.as_str() {
-                    "step" if in_context(&stack, "transformation") && !in_context(&stack, "GUI") => {
+                    "step"
+                        if in_context(&stack, "transformation") && !in_context(&stack, "GUI") =>
+                    {
                         current_step = Some(HopTransform {
                             name: String::new(),
                             type_name: String::new(),
@@ -75,7 +77,11 @@ pub fn parse_ktr(xml: &str) -> Result<HopPipeline, AjisaiError> {
 
                 // Pipeline-level name
                 if depth == 2 && tag == "name" {
-                    if stack.first().map(|s| s == "transformation").unwrap_or(false) {
+                    if stack
+                        .first()
+                        .map(|s| s == "transformation")
+                        .unwrap_or(false)
+                    {
                         pipeline.name = text.clone();
                     }
                 }
@@ -272,9 +278,7 @@ pub fn parse_kjb(xml: &str) -> Result<HopWorkflow, AjisaiError> {
                         "to" => h.to = text.clone(),
                         "enabled" => h.enabled = Some(text == "Y" || text == "true"),
                         "evaluation" => h.evaluation = Some(text.clone()),
-                        "unconditional" => {
-                            h.unconditional = Some(text == "Y" || text == "true")
-                        }
+                        "unconditional" => h.unconditional = Some(text == "Y" || text == "true"),
                         _ => {}
                     }
                 }

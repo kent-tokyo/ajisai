@@ -149,33 +149,63 @@ pub fn show_config_form(
         }
         "ParquetFileOutput" => {
             changed |= str_row(ui, "File path", config, "filename");
-            changed |= combo_row(ui, "Compression", config, "compression", &["snappy", "gzip", "none"]);
+            changed |= combo_row(
+                ui,
+                "Compression",
+                config,
+                "compression",
+                &["snappy", "gzip", "none"],
+            );
         }
         "XmlFileInput" => {
             changed |= str_row(ui, "File path", config, "filename");
             changed |= str_row(ui, "Record element", config, "record_element");
-            ui.label(egui::RichText::new("Fields (JSON array):").weak().size(11.0));
+            ui.label(
+                egui::RichText::new("Fields (JSON array):")
+                    .weak()
+                    .size(11.0),
+            );
             changed |= json_fallback(ui, config, 6, node_id, json_buf);
         }
         "GenerateRows" => {
             changed |= u64_row(ui, "Number of rows", config, "limit");
-            ui.label(egui::RichText::new("Fields (JSON array):").weak().size(11.0));
+            ui.label(
+                egui::RichText::new("Fields (JSON array):")
+                    .weak()
+                    .size(11.0),
+            );
             changed |= json_fallback(ui, config, 6, node_id, json_buf);
         }
         "RestClient" => {
             changed |= str_row(ui, "URL (${field} supported)", config, "url");
-            changed |= combo_row(ui, "Method", config, "method", &["GET", "POST", "PUT", "DELETE"]);
+            changed |= combo_row(
+                ui,
+                "Method",
+                config,
+                "method",
+                &["GET", "POST", "PUT", "DELETE"],
+            );
             changed |= str_row(ui, "Result field", config, "result_field");
             changed |= str_row(ui, "Status field (optional)", config, "status_field");
             changed |= str_row(ui, "Body field (optional)", config, "body_field");
         }
         "WriteToLog" => {
-            changed |= combo_row(ui, "Log level", config, "level", &["info", "debug", "warn", "error"]);
+            changed |= combo_row(
+                ui,
+                "Log level",
+                config,
+                "level",
+                &["info", "debug", "warn", "error"],
+            );
             changed |= str_list_row(ui, "Fields to log (blank = all)", config, "fields");
         }
         "MemoryGroupBy" => {
             changed |= str_list_row(ui, "Group by fields (one/line)", config, "group_fields");
-            ui.label(egui::RichText::new("Aggregates (JSON array):").weak().size(11.0));
+            ui.label(
+                egui::RichText::new("Aggregates (JSON array):")
+                    .weak()
+                    .size(11.0),
+            );
             ui.label(
                 egui::RichText::new(r#"[{"field":"f","aggregate":"sum","output":"total"}]"#)
                     .weak()
@@ -189,13 +219,26 @@ pub fn show_config_form(
             changed |= i64_row(ui, "Increment", config, "increment");
         }
         "AppendStreams" => {
-            ui.label(egui::RichText::new("No configuration needed.\nConnect multiple inputs.").weak().size(11.0));
+            ui.label(
+                egui::RichText::new("No configuration needed.\nConnect multiple inputs.")
+                    .weak()
+                    .size(11.0),
+            );
         }
         "RowNormaliser" => {
             changed |= str_row(ui, "Type field (label output)", config, "type_field");
             changed |= str_row(ui, "Value field (value output)", config, "value_field");
-            changed |= str_list_row(ui, "Non-pivot fields (one/line)", config, "non_pivot_fields");
-            ui.label(egui::RichText::new("Normalize specs (JSON array):").weak().size(11.0));
+            changed |= str_list_row(
+                ui,
+                "Non-pivot fields (one/line)",
+                config,
+                "non_pivot_fields",
+            );
+            ui.label(
+                egui::RichText::new("Normalize specs (JSON array):")
+                    .weak()
+                    .size(11.0),
+            );
             ui.label(
                 egui::RichText::new(r#"[{"type_value":"Q1","fields":["q1_sales"]}]"#)
                     .weak()
@@ -207,16 +250,26 @@ pub fn show_config_form(
             changed |= str_list_row(ui, "Group fields (one/line)", config, "group_fields");
             changed |= str_row(ui, "Key field (pivot key)", config, "key_field");
             changed |= str_row(ui, "Value field (data value)", config, "value_field");
-            ui.label(egui::RichText::new("Target fields (JSON array):").weak().size(11.0));
             ui.label(
-                egui::RichText::new(r#"[{"key_value":"Q1","result_field":"q1","aggregate":"first"}]"#)
+                egui::RichText::new("Target fields (JSON array):")
                     .weak()
-                    .size(10.0),
+                    .size(11.0),
+            );
+            ui.label(
+                egui::RichText::new(
+                    r#"[{"key_value":"Q1","result_field":"q1","aggregate":"first"}]"#,
+                )
+                .weak()
+                .size(10.0),
             );
             changed |= json_fallback(ui, config, 5, node_id, json_buf);
         }
         "SetVariable" => {
-            ui.label(egui::RichText::new("Variables (JSON array):").weak().size(11.0));
+            ui.label(
+                egui::RichText::new("Variables (JSON array):")
+                    .weak()
+                    .size(11.0),
+            );
             ui.label(
                 egui::RichText::new(r#"[{"variable_name":"MY_VAR","field_name":"src_field"}]"#)
                     .weak()
@@ -225,11 +278,17 @@ pub fn show_config_form(
             changed |= json_fallback(ui, config, 5, node_id, json_buf);
         }
         "GetVariable" => {
-            ui.label(egui::RichText::new("Variables (JSON array):").weak().size(11.0));
             ui.label(
-                egui::RichText::new(r#"[{"field_name":"env","variable":"${MY_VAR}","field_type":"string"}]"#)
+                egui::RichText::new("Variables (JSON array):")
                     .weak()
-                    .size(10.0),
+                    .size(11.0),
+            );
+            ui.label(
+                egui::RichText::new(
+                    r#"[{"field_name":"env","variable":"${MY_VAR}","field_type":"string"}]"#,
+                )
+                .weak()
+                .size(10.0),
             );
             changed |= json_fallback(ui, config, 5, node_id, json_buf);
         }
@@ -260,11 +319,19 @@ pub fn show_config_form(
             changed |= bool_row(ui, "Add newline", config, "newline");
         }
         "Dummy" => {
-            ui.label(egui::RichText::new("No configuration — rows pass through unchanged.").weak().size(11.0));
+            ui.label(
+                egui::RichText::new("No configuration — rows pass through unchanged.")
+                    .weak()
+                    .size(11.0),
+            );
         }
         "Abort" => {
             changed |= str_row(ui, "Abort message", config, "message");
-            ui.label(egui::RichText::new("Condition (JSON, optional):").weak().size(11.0));
+            ui.label(
+                egui::RichText::new("Condition (JSON, optional):")
+                    .weak()
+                    .size(11.0),
+            );
             ui.label(
                 egui::RichText::new(r#"{"op":"eq","field":"status","value":"ERROR"}"#)
                     .weak()
@@ -275,7 +342,12 @@ pub fn show_config_form(
         "RegexEval" => {
             changed |= str_row(ui, "Source field", config, "field");
             changed |= str_row(ui, "Pattern (regex)", config, "pattern");
-            changed |= str_list_row(ui, "Output fields (one per line; blank = use named groups)", config, "output_fields");
+            changed |= str_list_row(
+                ui,
+                "Output fields (one per line; blank = use named groups)",
+                config,
+                "output_fields",
+            );
             changed |= bool_row(ui, "Drop unmatched rows", config, "drop_unmatched");
         }
         "CloneRow" => {
@@ -294,19 +366,39 @@ pub fn show_config_form(
             changed |= str_row(ui, "Source field", config, "field");
             changed |= str_row(ui, "Output field", config, "output_field");
             changed |= str_row(ui, "Default value", config, "default_value");
-            ui.label(egui::RichText::new("Ranges (JSON array):").weak().size(11.0));
             ui.label(
-                egui::RichText::new(r#"[{"lower":0,"upper":59.9,"result":"F"},{"lower":60,"result":"Pass"}]"#)
+                egui::RichText::new("Ranges (JSON array):")
                     .weak()
-                    .size(10.0),
+                    .size(11.0),
+            );
+            ui.label(
+                egui::RichText::new(
+                    r#"[{"lower":0,"upper":59.9,"result":"F"},{"lower":60,"result":"Pass"}]"#,
+                )
+                .weak()
+                .size(10.0),
             );
             changed |= json_fallback(ui, config, 5, node_id, json_buf);
         }
         "ValueMapper" => {
             changed |= str_row(ui, "Source field", config, "field");
-            changed |= str_row(ui, "Output field (blank = in-place)", config, "output_field");
-            changed |= str_row(ui, "Default value (blank = passthrough)", config, "default_value");
-            ui.label(egui::RichText::new("Mappings (JSON array):").weak().size(11.0));
+            changed |= str_row(
+                ui,
+                "Output field (blank = in-place)",
+                config,
+                "output_field",
+            );
+            changed |= str_row(
+                ui,
+                "Default value (blank = passthrough)",
+                config,
+                "default_value",
+            );
+            ui.label(
+                egui::RichText::new("Mappings (JSON array):")
+                    .weak()
+                    .size(11.0),
+            );
             ui.label(
                 egui::RichText::new(r#"[{"source_value":"Y","target_value":"Yes"}]"#)
                     .weak()
@@ -321,7 +413,11 @@ pub fn show_config_form(
         }
         "ScriptStep" => {
             changed |= text_area_row(ui, "Rhai script", config, "script", 8);
-            ui.label(egui::RichText::new("Output fields (JSON array):").weak().size(11.0));
+            ui.label(
+                egui::RichText::new("Output fields (JSON array):")
+                    .weak()
+                    .size(11.0),
+            );
             ui.label(
                 egui::RichText::new(r#"[{"name":"result","field_type":"integer"}]"#)
                     .weak()
@@ -834,9 +930,7 @@ fn replace_in_string_editor(ui: &mut Ui, config: &mut Value) -> bool {
     if changed {
         let arr: Vec<Value> = items
             .iter()
-            .map(|(f, s, r)| {
-                serde_json::json!({ "field": f, "search": s, "replace_with": r })
-            })
+            .map(|(f, s, r)| serde_json::json!({ "field": f, "search": s, "replace_with": r }))
             .collect();
         obj.insert("replacements".to_owned(), Value::Array(arr));
     }

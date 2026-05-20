@@ -35,7 +35,10 @@ pub struct RowNormaliser {
 
 impl RowNormaliser {
     pub fn new(config: RowNormaliserConfig) -> Self {
-        Self { config, output_schema: None }
+        Self {
+            config,
+            output_schema: None,
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {
@@ -72,9 +75,9 @@ impl Transform for RowNormaliser {
     }
 
     async fn process(&mut self, row: Row) -> Result<Vec<Row>> {
-        let schema = self.output_schema.get_or_insert_with(|| {
-            Self::build_schema(&self.config, &row.schema)
-        });
+        let schema = self
+            .output_schema
+            .get_or_insert_with(|| Self::build_schema(&self.config, &row.schema));
 
         // Build the non-pivot portion once
         let non_pivot_values: Vec<Value> = self
@@ -118,11 +121,14 @@ mod tests {
             Field::new("q1", ValueType::Float),
             Field::new("q2", ValueType::Float),
         ]));
-        Row::new(schema, vec![
-            Value::Str("eng".into()),
-            Value::Float(100.0),
-            Value::Float(200.0),
-        ])
+        Row::new(
+            schema,
+            vec![
+                Value::Str("eng".into()),
+                Value::Float(100.0),
+                Value::Float(200.0),
+            ],
+        )
     }
 
     #[tokio::test]
@@ -132,8 +138,14 @@ mod tests {
             value_field: "sales".into(),
             non_pivot_fields: vec!["dept".into()],
             normalize_specs: vec![
-                NormalizeSpec { type_value: "Q1".into(), fields: vec!["q1".into()] },
-                NormalizeSpec { type_value: "Q2".into(), fields: vec!["q2".into()] },
+                NormalizeSpec {
+                    type_value: "Q1".into(),
+                    fields: vec!["q1".into()],
+                },
+                NormalizeSpec {
+                    type_value: "Q2".into(),
+                    fields: vec!["q2".into()],
+                },
             ],
         });
         t.open(&ExecutionContext::new()).await.unwrap();

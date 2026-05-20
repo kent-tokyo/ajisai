@@ -77,7 +77,10 @@ mod tests {
     use std::sync::Arc;
 
     fn make_row(status: &str) -> Row {
-        let schema = Arc::new(RowSchema::new(vec![Field::new("status", ValueType::String)]));
+        let schema = Arc::new(RowSchema::new(vec![Field::new(
+            "status",
+            ValueType::String,
+        )]));
         Row::new(schema, vec![Value::Str(status.into())])
     }
 
@@ -99,7 +102,10 @@ mod tests {
 
     #[tokio::test]
     async fn aborts_unconditionally_when_no_condition() {
-        let mut t = Abort::new(AbortConfig { condition: None, message: "always".into() });
+        let mut t = Abort::new(AbortConfig {
+            condition: None,
+            message: "always".into(),
+        });
         t.open(&ExecutionContext::new()).await.unwrap();
         assert!(t.process(make_row("anything")).await.is_err());
     }

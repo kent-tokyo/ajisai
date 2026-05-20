@@ -29,7 +29,10 @@ pub struct WriteToLog {
 
 impl WriteToLog {
     pub fn new(config: WriteToLogConfig) -> Self {
-        Self { config, header_printed: false }
+        Self {
+            config,
+            header_printed: false,
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {

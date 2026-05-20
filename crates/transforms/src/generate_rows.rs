@@ -32,7 +32,10 @@ pub struct GenerateRows {
 
 impl GenerateRows {
     pub fn new(config: GenerateRowsConfig) -> Self {
-        Self { config, schema: None }
+        Self {
+            config,
+            schema: None,
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {
@@ -56,7 +59,9 @@ impl GenerateRows {
         match spec.value_type {
             ValueType::Integer => raw.parse::<i64>().map(Value::Int).unwrap_or(Value::Null),
             ValueType::Float => raw.parse::<f64>().map(Value::Float).unwrap_or(Value::Null),
-            ValueType::Boolean => Value::Bool(matches!(raw.to_lowercase().as_str(), "true" | "1" | "yes")),
+            ValueType::Boolean => {
+                Value::Bool(matches!(raw.to_lowercase().as_str(), "true" | "1" | "yes"))
+            }
             _ => Value::Str(raw),
         }
     }
@@ -115,8 +120,16 @@ mod tests {
     async fn generates_fixed_rows() {
         let mut t = GenerateRows::new(GenerateRowsConfig {
             fields: vec![
-                GenerateFieldSpec { name: "id".into(), value_type: ValueType::Integer, value: "${ROW_NR}".into() },
-                GenerateFieldSpec { name: "label".into(), value_type: ValueType::String, value: "hello".into() },
+                GenerateFieldSpec {
+                    name: "id".into(),
+                    value_type: ValueType::Integer,
+                    value: "${ROW_NR}".into(),
+                },
+                GenerateFieldSpec {
+                    name: "label".into(),
+                    value_type: ValueType::String,
+                    value: "hello".into(),
+                },
             ],
             limit: 3,
         });

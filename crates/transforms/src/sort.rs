@@ -44,7 +44,6 @@ impl SortRows {
             serde_json::from_value(value).map_err(|e| AjisaiError::Config(e.to_string()))?;
         Ok(Box::new(Self::new(config)))
     }
-
 }
 
 #[async_trait]

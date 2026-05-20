@@ -26,7 +26,10 @@ pub struct SetVariable {
 
 impl SetVariable {
     pub fn new(config: SetVariableConfig) -> Self {
-        Self { config, ctx: ExecutionContext::new() }
+        Self {
+            config,
+            ctx: ExecutionContext::new(),
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {

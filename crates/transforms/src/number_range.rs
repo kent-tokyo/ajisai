@@ -39,7 +39,10 @@ pub struct NumberRange {
 
 impl NumberRange {
     pub fn new(config: NumberRangeConfig) -> Self {
-        Self { config, output_schema: None }
+        Self {
+            config,
+            output_schema: None,
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {
@@ -119,10 +122,26 @@ mod tests {
             field: "score".into(),
             output_field: "grade".into(),
             ranges: vec![
-                RangeEntry { lower: None, upper: Some(59.9), result: "F".into() },
-                RangeEntry { lower: Some(60.0), upper: Some(74.9), result: "C".into() },
-                RangeEntry { lower: Some(75.0), upper: Some(89.9), result: "B".into() },
-                RangeEntry { lower: Some(90.0), upper: None, result: "A".into() },
+                RangeEntry {
+                    lower: None,
+                    upper: Some(59.9),
+                    result: "F".into(),
+                },
+                RangeEntry {
+                    lower: Some(60.0),
+                    upper: Some(74.9),
+                    result: "C".into(),
+                },
+                RangeEntry {
+                    lower: Some(75.0),
+                    upper: Some(89.9),
+                    result: "B".into(),
+                },
+                RangeEntry {
+                    lower: Some(90.0),
+                    upper: None,
+                    result: "A".into(),
+                },
             ],
             default_value: "?".into(),
         })
@@ -148,11 +167,18 @@ mod tests {
         let mut t = NumberRange::new(NumberRangeConfig {
             field: "score".into(),
             output_field: "grade".into(),
-            ranges: vec![RangeEntry { lower: Some(0.0), upper: Some(100.0), result: "ok".into() }],
+            ranges: vec![RangeEntry {
+                lower: Some(0.0),
+                upper: Some(100.0),
+                result: "ok".into(),
+            }],
             default_value: "out-of-range".into(),
         });
         t.open(&ExecutionContext::new()).await.unwrap();
         let out = t.process(make_row(150.0)).await.unwrap();
-        assert_eq!(out[0].get("grade"), Some(&Value::Str("out-of-range".into())));
+        assert_eq!(
+            out[0].get("grade"),
+            Some(&Value::Str("out-of-range".into()))
+        );
     }
 }

@@ -134,18 +134,54 @@ impl Accumulator {
 
 fn min_value(a: Value, b: Value) -> Value {
     match (&a, &b) {
-        (Value::Int(x), Value::Int(y)) => if x <= y { a } else { b },
-        (Value::Float(x), Value::Float(y)) => if x <= y { a } else { b },
-        (Value::Str(x), Value::Str(y)) => if x <= y { a } else { b },
+        (Value::Int(x), Value::Int(y)) => {
+            if x <= y {
+                a
+            } else {
+                b
+            }
+        }
+        (Value::Float(x), Value::Float(y)) => {
+            if x <= y {
+                a
+            } else {
+                b
+            }
+        }
+        (Value::Str(x), Value::Str(y)) => {
+            if x <= y {
+                a
+            } else {
+                b
+            }
+        }
         _ => a,
     }
 }
 
 fn max_value(a: Value, b: Value) -> Value {
     match (&a, &b) {
-        (Value::Int(x), Value::Int(y)) => if x >= y { a } else { b },
-        (Value::Float(x), Value::Float(y)) => if x >= y { a } else { b },
-        (Value::Str(x), Value::Str(y)) => if x >= y { a } else { b },
+        (Value::Int(x), Value::Int(y)) => {
+            if x >= y {
+                a
+            } else {
+                b
+            }
+        }
+        (Value::Float(x), Value::Float(y)) => {
+            if x >= y {
+                a
+            } else {
+                b
+            }
+        }
+        (Value::Str(x), Value::Str(y)) => {
+            if x >= y {
+                a
+            } else {
+                b
+            }
+        }
         _ => a,
     }
 }
@@ -187,7 +223,9 @@ impl MemoryGroupBy {
         for agg in &self.config.aggregates {
             let vt = match agg.operation {
                 AggregateOp::Count | AggregateOp::CountAll => ValueType::Integer,
-                AggregateOp::Sum | AggregateOp::Avg | AggregateOp::Min | AggregateOp::Max => ValueType::Float,
+                AggregateOp::Sum | AggregateOp::Avg | AggregateOp::Min | AggregateOp::Max => {
+                    ValueType::Float
+                }
                 AggregateOp::First | AggregateOp::Last => ValueType::String,
             };
             fields.push(Field::new(agg.result_field.as_str(), vt));
@@ -249,10 +287,7 @@ impl Transform for MemoryGroupBy {
         let mut rows = Vec::with_capacity(self.order.len());
         for key in &self.order {
             let accs = &self.groups[key];
-            let mut values: Vec<Value> = key
-                .iter()
-                .map(|s| Value::Str(s.clone()))
-                .collect();
+            let mut values: Vec<Value> = key.iter().map(|s| Value::Str(s.clone())).collect();
             for acc in accs {
                 values.push(acc.result());
             }
@@ -303,7 +338,10 @@ mod tests {
         let rows = t.flush().await.unwrap();
 
         assert_eq!(rows.len(), 2);
-        let eng = rows.iter().find(|r| r.get("dept") == Some(&Value::Str("eng".into()))).unwrap();
+        let eng = rows
+            .iter()
+            .find(|r| r.get("dept") == Some(&Value::Str("eng".into())))
+            .unwrap();
         assert_eq!(eng.get("total_salary"), Some(&Value::Float(300.0)));
         assert_eq!(eng.get("headcount"), Some(&Value::Int(2)));
     }

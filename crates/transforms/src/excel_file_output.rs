@@ -35,7 +35,11 @@ pub struct ExcelFileOutput {
 impl ExcelFileOutput {
     pub fn new(config: ExcelFileOutputConfig) -> Self {
         let resolved_path = config.filename.clone();
-        Self { config, resolved_path, buffer: Vec::new() }
+        Self {
+            config,
+            resolved_path,
+            buffer: Vec::new(),
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {

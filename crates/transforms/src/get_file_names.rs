@@ -29,7 +29,10 @@ pub struct GetFileNames {
 
 impl GetFileNames {
     pub fn new(config: GetFileNamesConfig) -> Self {
-        Self { config, resolved_dir: None }
+        Self {
+            config,
+            resolved_dir: None,
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {
@@ -150,8 +153,14 @@ impl Transform for GetFileNames {
 
         let schema = Self::schema();
         let mut rows = Vec::new();
-        Self::collect_entries(&dir, pattern.as_ref(), self.config.include_subdirs, &schema, &mut rows)
-            .map_err(AjisaiError::Io)?;
+        Self::collect_entries(
+            &dir,
+            pattern.as_ref(),
+            self.config.include_subdirs,
+            &schema,
+            &mut rows,
+        )
+        .map_err(AjisaiError::Io)?;
 
         for row in rows {
             sender

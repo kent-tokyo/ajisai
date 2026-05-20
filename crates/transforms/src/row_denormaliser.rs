@@ -103,7 +103,11 @@ impl Transform for RowDenormaliser {
             .config
             .group_fields
             .iter()
-            .map(|f| row.get(f).map(|v| v.to_display_string()).unwrap_or_default())
+            .map(|f| {
+                row.get(f)
+                    .map(|v| v.to_display_string())
+                    .unwrap_or_default()
+            })
             .collect();
 
         let group = self.groups.entry(key.clone()).or_insert_with(|| {
@@ -114,14 +118,20 @@ impl Transform for RowDenormaliser {
                 .iter()
                 .map(|f| row.get(f).cloned().unwrap_or(Value::Null))
                 .collect();
-            GroupState { group_values, pivoted: HashMap::new() }
+            GroupState {
+                group_values,
+                pivoted: HashMap::new(),
+            }
         });
 
         let pivot_key = row
             .get(&self.config.key_field)
             .map(|v| v.to_display_string())
             .unwrap_or_default();
-        let data_val = row.get(&self.config.value_field).cloned().unwrap_or(Value::Null);
+        let data_val = row
+            .get(&self.config.value_field)
+            .cloned()
+            .unwrap_or(Value::Null);
 
         // Find matching target field(s)
         for tf in &self.config.target_fields {
@@ -132,11 +142,16 @@ impl Transform for RowDenormaliser {
                         entry.or_insert(data_val.clone());
                     }
                     DenormAggregate::Last => {
-                        *group.pivoted.entry(tf.result_field.clone()).or_insert(Value::Null) =
-                            data_val.clone();
+                        *group
+                            .pivoted
+                            .entry(tf.result_field.clone())
+                            .or_insert(Value::Null) = data_val.clone();
                     }
                     DenormAggregate::Sum => {
-                        let cur = group.pivoted.entry(tf.result_field.clone()).or_insert(Value::Float(0.0));
+                        let cur = group
+                            .pivoted
+                            .entry(tf.result_field.clone())
+                            .or_insert(Value::Float(0.0));
                         let a = cur.as_float().unwrap_or(0.0);
                         let b = data_val.as_float().unwrap_or(0.0);
                         *cur = Value::Float(a + b);
@@ -176,7 +191,11 @@ impl Transform for RowDenormaliser {
             let gs = &self.groups[key];
             let mut values = gs.group_values.clone();
             for tf in &self.config.target_fields {
-                let v = gs.pivoted.get(&tf.result_field).cloned().unwrap_or(Value::Null);
+                let v = gs
+                    .pivoted
+                    .get(&tf.result_field)
+                    .cloned()
+                    .unwrap_or(Value::Null);
                 values.push(match v {
                     Value::Null => Value::Null,
                     other => Value::Str(other.to_display_string()),
@@ -203,11 +222,14 @@ mod tests {
             Field::new("quarter", ValueType::String),
             Field::new("sales", ValueType::Float),
         ]));
-        Row::new(schema, vec![
-            Value::Str(dept.into()),
-            Value::Str(quarter.into()),
-            Value::Float(sales),
-        ])
+        Row::new(
+            schema,
+            vec![
+                Value::Str(dept.into()),
+                Value::Str(quarter.into()),
+                Value::Float(sales),
+            ],
+        )
     }
 
     #[tokio::test]
@@ -217,8 +239,16 @@ mod tests {
             key_field: "quarter".into(),
             value_field: "sales".into(),
             target_fields: vec![
-                TargetField { key_value: "Q1".into(), result_field: "q1_sales".into(), aggregate: DenormAggregate::First },
-                TargetField { key_value: "Q2".into(), result_field: "q2_sales".into(), aggregate: DenormAggregate::First },
+                TargetField {
+                    key_value: "Q1".into(),
+                    result_field: "q1_sales".into(),
+                    aggregate: DenormAggregate::First,
+                },
+                TargetField {
+                    key_value: "Q2".into(),
+                    result_field: "q2_sales".into(),
+                    aggregate: DenormAggregate::First,
+                },
             ],
         });
         t.open(&ExecutionContext::new()).await.unwrap();
@@ -228,7 +258,10 @@ mod tests {
 
         let rows = t.flush().await.unwrap();
         assert_eq!(rows.len(), 2);
-        let eng = rows.iter().find(|r| r.get("dept") == Some(&Value::Str("eng".into()))).unwrap();
+        let eng = rows
+            .iter()
+            .find(|r| r.get("dept") == Some(&Value::Str("eng".into())))
+            .unwrap();
         assert_eq!(eng.get("q1_sales"), Some(&Value::Str("100".into())));
         assert_eq!(eng.get("q2_sales"), Some(&Value::Str("200".into())));
     }

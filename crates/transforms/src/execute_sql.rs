@@ -31,7 +31,11 @@ pub struct ExecuteSQL {
 
 impl ExecuteSQL {
     pub fn new(config: ExecuteSQLConfig) -> Self {
-        Self { config, resolved_url: None, pool: None }
+        Self {
+            config,
+            resolved_url: None,
+            pool: None,
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {

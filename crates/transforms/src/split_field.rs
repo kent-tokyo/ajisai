@@ -84,10 +84,12 @@ impl Transform for SplitFieldToRows {
                     .fields
                     .iter()
                     .position(|f| f.name == self.config.field)
-                    .ok_or_else(|| AjisaiError::Config(format!(
-                        "SplitFieldToRows: field '{}' not found",
-                        self.config.field
-                    )))?;
+                    .ok_or_else(|| {
+                        AjisaiError::Config(format!(
+                            "SplitFieldToRows: field '{}' not found",
+                            self.config.field
+                        ))
+                    })?;
                 self.src_idx = Some(i);
                 i
             }
@@ -159,10 +161,7 @@ mod tests {
             Field::new("id", ValueType::Integer),
             Field::new("tags", ValueType::String),
         ]));
-        Row::new(
-            schema,
-            vec![Value::Int(id), Value::Str(tags.into())],
-        )
+        Row::new(schema, vec![Value::Int(id), Value::Str(tags.into())])
     }
 
     #[tokio::test]

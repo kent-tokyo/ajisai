@@ -236,7 +236,10 @@ impl Transform for ConcatFields {
 
     fn output_schema(&self, input: &RowSchema) -> Result<RowSchema> {
         let mut fields = input.fields.clone();
-        fields.push(Field::new(self.config.output_field.clone(), ValueType::String));
+        fields.push(Field::new(
+            self.config.output_field.clone(),
+            ValueType::String,
+        ));
         Ok(RowSchema::new(fields))
     }
 
@@ -290,10 +293,7 @@ mod tests {
             Field::new("a", ValueType::String),
             Field::new("b", ValueType::String),
         ]));
-        Row::new(
-            schema,
-            vec![Value::Str(a.into()), Value::Str(b.into())],
-        )
+        Row::new(schema, vec![Value::Str(a.into()), Value::Str(b.into())])
     }
 
     #[tokio::test]

@@ -25,7 +25,10 @@ pub struct ParquetFileInput {
 impl ParquetFileInput {
     pub fn new(config: ParquetFileInputConfig) -> Self {
         let resolved_path = config.filename.clone();
-        Self { config, resolved_path }
+        Self {
+            config,
+            resolved_path,
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {
@@ -69,35 +72,43 @@ impl Transform for ParquetFileInput {
     async fn produce(&mut self, sender: Sender<Row>) -> Result<()> {
         let safe_path = resolve_safe_path(&self.resolved_path)?;
         let path_str = self.resolved_path.clone();
-        let result = tokio::task::spawn_blocking(move || -> Result<Vec<(Arc<RowSchema>, Vec<Row>)>> {
-            let file = std::fs::File::open(&safe_path)
-                .map_err(|e| AjisaiError::Config(format!("Cannot open Parquet file '{}': {}", path_str, e)))?;
+        let result =
+            tokio::task::spawn_blocking(move || -> Result<Vec<(Arc<RowSchema>, Vec<Row>)>> {
+                let file = std::fs::File::open(&safe_path).map_err(|e| {
+                    AjisaiError::Config(format!("Cannot open Parquet file '{}': {}", path_str, e))
+                })?;
 
-            let builder = ParquetRecordBatchReaderBuilder::try_new(file)
-                .map_err(|e| AjisaiError::Config(format!("Invalid Parquet file: {}", e)))?;
+                let builder = ParquetRecordBatchReaderBuilder::try_new(file)
+                    .map_err(|e| AjisaiError::Config(format!("Invalid Parquet file: {}", e)))?;
 
-            let arrow_schema = builder.schema().clone();
-            let fields: Vec<Field> = arrow_schema
-                .fields()
-                .iter()
-                .map(|f| Field::new(f.name().as_str(), crate::parquet_utils::arrow_to_value_type(f.data_type())))
-                .collect();
-            let schema = Arc::new(RowSchema::new(fields));
+                let arrow_schema = builder.schema().clone();
+                let fields: Vec<Field> = arrow_schema
+                    .fields()
+                    .iter()
+                    .map(|f| {
+                        Field::new(
+                            f.name().as_str(),
+                            crate::parquet_utils::arrow_to_value_type(f.data_type()),
+                        )
+                    })
+                    .collect();
+                let schema = Arc::new(RowSchema::new(fields));
 
-            let reader = builder
-                .build()
-                .map_err(|e| AjisaiError::Config(format!("Cannot build Parquet reader: {}", e)))?;
+                let reader = builder.build().map_err(|e| {
+                    AjisaiError::Config(format!("Cannot build Parquet reader: {}", e))
+                })?;
 
-            let mut batches = Vec::new();
-            for batch in reader {
-                let batch = batch.map_err(|e| AjisaiError::Config(format!("Parquet read error: {}", e)))?;
-                let rows = Self::batch_to_rows(&batch, &schema);
-                batches.push((schema.clone(), rows));
-            }
-            Ok(batches)
-        })
-        .await
-        .map_err(|e| AjisaiError::Config(format!("Spawn blocking failed: {}", e)))??;
+                let mut batches = Vec::new();
+                for batch in reader {
+                    let batch = batch
+                        .map_err(|e| AjisaiError::Config(format!("Parquet read error: {}", e)))?;
+                    let rows = Self::batch_to_rows(&batch, &schema);
+                    batches.push((schema.clone(), rows));
+                }
+                Ok(batches)
+            })
+            .await
+            .map_err(|e| AjisaiError::Config(format!("Spawn blocking failed: {}", e)))??;
 
         for (_, rows) in result {
             for row in rows {

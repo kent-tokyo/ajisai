@@ -24,7 +24,10 @@ pub struct UniqueRows {
 
 impl UniqueRows {
     pub fn new(config: UniqueRowsConfig) -> Self {
-        Self { config, last_key: None }
+        Self {
+            config,
+            last_key: None,
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {
@@ -44,7 +47,11 @@ impl UniqueRows {
             self.config
                 .key_fields
                 .iter()
-                .map(|f| row.get(f).map(|v| v.to_display_string()).unwrap_or_default())
+                .map(|f| {
+                    row.get(f)
+                        .map(|v| v.to_display_string())
+                        .unwrap_or_default()
+                })
                 .collect::<Vec<_>>()
                 .join("\x00")
         }

@@ -34,7 +34,11 @@ pub struct RegexEval {
 
 impl RegexEval {
     pub fn new(config: RegexEvalConfig) -> Self {
-        Self { config, regex: None, output_schema: None }
+        Self {
+            config,
+            regex: None,
+            output_schema: None,
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {
@@ -49,11 +53,7 @@ impl RegexEval {
         }
         // Fall back to named capture groups in pattern order
         if let Some(re) = &self.regex {
-            return re
-                .capture_names()
-                .flatten()
-                .map(|s| s.to_owned())
-                .collect();
+            return re.capture_names().flatten().map(|s| s.to_owned()).collect();
         }
         vec![]
     }
@@ -165,7 +165,10 @@ mod tests {
         let out = t.process(make_row("alice@example.com")).await.unwrap();
         assert_eq!(out.len(), 1);
         assert_eq!(out[0].get("local"), Some(&Value::Str("alice".into())));
-        assert_eq!(out[0].get("domain"), Some(&Value::Str("example.com".into())));
+        assert_eq!(
+            out[0].get("domain"),
+            Some(&Value::Str("example.com".into()))
+        );
     }
 
     #[tokio::test]

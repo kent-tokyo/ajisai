@@ -28,7 +28,10 @@ pub struct FieldSplitter {
 
 impl FieldSplitter {
     pub fn new(config: FieldSplitterConfig) -> Self {
-        Self { config, output_schema: None }
+        Self {
+            config,
+            output_schema: None,
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {
@@ -57,13 +60,16 @@ impl Transform for FieldSplitter {
     }
 
     async fn process(&mut self, row: Row) -> Result<Vec<Row>> {
-        let schema = self.output_schema.get_or_insert_with(|| {
-            let mut fields = row.schema.fields.clone();
-            for name in &self.config.output_fields {
-                fields.push(Field::new(name.as_str(), ValueType::String));
-            }
-            Arc::new(RowSchema::new(fields))
-        }).clone();
+        let schema = self
+            .output_schema
+            .get_or_insert_with(|| {
+                let mut fields = row.schema.fields.clone();
+                for name in &self.config.output_fields {
+                    fields.push(Field::new(name.as_str(), ValueType::String));
+                }
+                Arc::new(RowSchema::new(fields))
+            })
+            .clone();
 
         let raw = row
             .get(&self.config.field)
@@ -76,7 +82,11 @@ impl Transform for FieldSplitter {
         for (i, out_name) in self.config.output_fields.iter().enumerate() {
             let _ = out_name; // used only for schema; value by position
             let token = parts.get(i).copied().unwrap_or("");
-            let token = if self.config.trim { token.trim() } else { token };
+            let token = if self.config.trim {
+                token.trim()
+            } else {
+                token
+            };
             values.push(Value::Str(token.to_owned()));
         }
 

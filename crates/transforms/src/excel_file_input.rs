@@ -6,7 +6,7 @@ use ajisai_core::{
     AjisaiError, Transform,
 };
 use async_trait::async_trait;
-use calamine::{Data, Reader, open_workbook_auto};
+use calamine::{open_workbook_auto, Data, Reader};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
@@ -31,7 +31,10 @@ pub struct ExcelFileInput {
 impl ExcelFileInput {
     pub fn new(config: ExcelFileInputConfig) -> Self {
         let resolved_path = config.filename.clone();
-        Self { config, resolved_path }
+        Self {
+            config,
+            resolved_path,
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {
@@ -76,8 +79,12 @@ impl Transform for ExcelFileInput {
 
     async fn produce(&mut self, sender: Sender<Row>) -> Result<()> {
         let safe_path = resolve_safe_path(&self.resolved_path)?;
-        let mut workbook = open_workbook_auto(&safe_path)
-            .map_err(|e| AjisaiError::Config(format!("Cannot open Excel file '{}': {}", self.resolved_path, e)))?;
+        let mut workbook = open_workbook_auto(&safe_path).map_err(|e| {
+            AjisaiError::Config(format!(
+                "Cannot open Excel file '{}': {}",
+                self.resolved_path, e
+            ))
+        })?;
 
         let sheet_name = match &self.config.sheet_name {
             Some(n) => n.clone(),
@@ -88,9 +95,9 @@ impl Transform for ExcelFileInput {
                 .ok_or_else(|| AjisaiError::Config("Excel workbook has no sheets".into()))?,
         };
 
-        let range = workbook
-            .worksheet_range(&sheet_name)
-            .map_err(|e| AjisaiError::Config(format!("Cannot read sheet '{}': {}", sheet_name, e)))?;
+        let range = workbook.worksheet_range(&sheet_name).map_err(|e| {
+            AjisaiError::Config(format!("Cannot read sheet '{}': {}", sheet_name, e))
+        })?;
 
         let mut rows_iter = range.rows();
 
@@ -113,7 +120,10 @@ impl Transform for ExcelFileInput {
             // Process the first row we already consumed
             if !first.is_empty() {
                 let schema = Arc::new(RowSchema::new(
-                    names.iter().map(|n| Field::new(n.as_str(), ValueType::String)).collect(),
+                    names
+                        .iter()
+                        .map(|n| Field::new(n.as_str(), ValueType::String))
+                        .collect(),
                 ));
                 let values = first.iter().map(Self::data_to_value).collect();
                 if sender.send(Row::new(schema, values)).await.is_err() {
@@ -124,7 +134,10 @@ impl Transform for ExcelFileInput {
         };
 
         let schema = Arc::new(RowSchema::new(
-            headers.iter().map(|n| Field::new(n.as_str(), ValueType::String)).collect(),
+            headers
+                .iter()
+                .map(|n| Field::new(n.as_str(), ValueType::String))
+                .collect(),
         ));
 
         for row in rows_iter {

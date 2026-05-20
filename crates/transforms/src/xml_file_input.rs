@@ -37,7 +37,10 @@ pub struct XmlFileInput {
 impl XmlFileInput {
     pub fn new(config: XmlFileInputConfig) -> Self {
         let resolved_path = config.filename.clone();
-        Self { config, resolved_path }
+        Self {
+            config,
+            resolved_path,
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {
@@ -45,7 +48,6 @@ impl XmlFileInput {
             serde_json::from_value(value).map_err(|e| AjisaiError::Config(e.to_string()))?;
         Ok(Box::new(Self::new(config)))
     }
-
 }
 
 #[async_trait]
@@ -75,8 +77,12 @@ impl Transform for XmlFileInput {
 
     async fn produce(&mut self, sender: Sender<Row>) -> Result<()> {
         let safe_path = resolve_safe_path(&self.resolved_path)?;
-        let xml = std::fs::read_to_string(&safe_path)
-            .map_err(|e| AjisaiError::Config(format!("Cannot read XML file '{}': {}", self.resolved_path, e)))?;
+        let xml = std::fs::read_to_string(&safe_path).map_err(|e| {
+            AjisaiError::Config(format!(
+                "Cannot read XML file '{}': {}",
+                self.resolved_path, e
+            ))
+        })?;
 
         let schema = Arc::new(RowSchema::new(
             self.config
@@ -144,7 +150,9 @@ impl Transform for XmlFileInput {
                                 current.insert(path.clone(), text_buf.clone());
                                 // Also store leaf name alone for simple xpaths
                                 if let Some(leaf) = path_stack.last() {
-                                    current.entry(leaf.clone()).or_insert_with(|| text_buf.clone());
+                                    current
+                                        .entry(leaf.clone())
+                                        .or_insert_with(|| text_buf.clone());
                                 }
                             }
                             path_stack.pop();
@@ -190,8 +198,16 @@ mod tests {
             filename: tmp.to_str().unwrap().into(),
             record_element: "record".into(),
             fields: vec![
-                XmlFieldSpec { name: "name".into(), xpath: "name".into(), field_type: ValueType::String },
-                XmlFieldSpec { name: "age".into(), xpath: "age".into(), field_type: ValueType::Integer },
+                XmlFieldSpec {
+                    name: "name".into(),
+                    xpath: "name".into(),
+                    field_type: ValueType::String,
+                },
+                XmlFieldSpec {
+                    name: "age".into(),
+                    xpath: "age".into(),
+                    field_type: ValueType::Integer,
+                },
             ],
         });
         t.open(&ExecutionContext::new()).await.unwrap();

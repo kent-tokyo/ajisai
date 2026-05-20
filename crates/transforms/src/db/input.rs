@@ -124,7 +124,10 @@ impl Transform for TableInput {
             .as_deref()
             .unwrap_or(&self.config.connection_url)
             .to_owned();
-        debug!("TableInput connecting to '{}'", Self::mask_url_password(&url));
+        debug!(
+            "TableInput connecting to '{}'",
+            Self::mask_url_password(&url)
+        );
 
         sqlx::any::install_default_drivers();
         let pool = AnyPool::connect(&url)

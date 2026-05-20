@@ -33,7 +33,11 @@ pub struct RestClient {
 
 impl RestClient {
     pub fn new(config: RestClientConfig) -> Self {
-        Self { config, client: None, output_schema: None }
+        Self {
+            config,
+            client: None,
+            output_schema: None,
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {

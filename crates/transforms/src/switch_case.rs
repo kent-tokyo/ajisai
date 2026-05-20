@@ -84,7 +84,10 @@ mod tests {
     use std::sync::Arc;
 
     fn make_row(status: &str) -> Row {
-        let schema = Arc::new(RowSchema::new(vec![Field::new("status", ValueType::String)]));
+        let schema = Arc::new(RowSchema::new(vec![Field::new(
+            "status",
+            ValueType::String,
+        )]));
         Row::new(schema, vec![Value::Str(status.into())])
     }
 
@@ -93,14 +96,23 @@ mod tests {
         let t = SwitchCase::new(SwitchCaseConfig {
             field_name: "status".into(),
             cases: vec![
-                CaseSpec { value: "active".into(), target: "ActiveOutput".into() },
-                CaseSpec { value: "inactive".into(), target: "InactiveOutput".into() },
+                CaseSpec {
+                    value: "active".into(),
+                    target: "ActiveOutput".into(),
+                },
+                CaseSpec {
+                    value: "inactive".into(),
+                    target: "InactiveOutput".into(),
+                },
             ],
             default_target: Some("DefaultOutput".into()),
         });
 
         assert_eq!(t.route(&make_row("active")), Some("ActiveOutput".into()));
-        assert_eq!(t.route(&make_row("inactive")), Some("InactiveOutput".into()));
+        assert_eq!(
+            t.route(&make_row("inactive")),
+            Some("InactiveOutput".into())
+        );
         assert_eq!(t.route(&make_row("unknown")), Some("DefaultOutput".into()));
     }
 
@@ -108,7 +120,10 @@ mod tests {
     async fn broadcasts_when_no_default() {
         let t = SwitchCase::new(SwitchCaseConfig {
             field_name: "status".into(),
-            cases: vec![CaseSpec { value: "active".into(), target: "ActiveOutput".into() }],
+            cases: vec![CaseSpec {
+                value: "active".into(),
+                target: "ActiveOutput".into(),
+            }],
             default_target: None,
         });
         assert_eq!(t.route(&make_row("other")), None);

@@ -32,7 +32,11 @@ pub struct GetVariable {
 
 impl GetVariable {
     pub fn new(config: GetVariableConfig) -> Self {
-        Self { config, cached: Vec::new(), output_schema: None }
+        Self {
+            config,
+            cached: Vec::new(),
+            output_schema: None,
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {
@@ -40,7 +44,6 @@ impl GetVariable {
             serde_json::from_value(value).map_err(|e| AjisaiError::Config(e.to_string()))?;
         Ok(Box::new(Self::new(config)))
     }
-
 }
 
 #[async_trait]

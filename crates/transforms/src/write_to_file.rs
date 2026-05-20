@@ -35,7 +35,10 @@ pub struct WriteToFile {
 
 impl WriteToFile {
     pub fn new(config: WriteToFileConfig) -> Self {
-        Self { config, writer: None }
+        Self {
+            config,
+            writer: None,
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {

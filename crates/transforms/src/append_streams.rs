@@ -1,4 +1,9 @@
-use ajisai_core::{context::ExecutionContext, error::Result, value::{Row, RowSchema}, Transform};
+use ajisai_core::{
+    context::ExecutionContext,
+    error::Result,
+    value::{Row, RowSchema},
+    Transform,
+};
 use async_trait::async_trait;
 
 pub struct AppendStreams;

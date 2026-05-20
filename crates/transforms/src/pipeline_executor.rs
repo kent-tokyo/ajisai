@@ -29,12 +29,17 @@ pub struct PipelineExecutor {
 
 impl PipelineExecutor {
     pub fn new(config: PipelineExecutorConfig) -> Self {
-        Self { config, ctx: None, buffered_rows: Vec::new(), output_schema: None }
+        Self {
+            config,
+            ctx: None,
+            buffered_rows: Vec::new(),
+            output_schema: None,
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {
-        let config: PipelineExecutorConfig = serde_json::from_value(value)
-            .map_err(|e| AjisaiError::Config(e.to_string()))?;
+        let config: PipelineExecutorConfig =
+            serde_json::from_value(value).map_err(|e| AjisaiError::Config(e.to_string()))?;
         Ok(Box::new(Self::new(config)))
     }
 }
@@ -55,7 +60,8 @@ impl Transform for PipelineExecutor {
     }
 
     async fn process(&mut self, row: Row) -> Result<Vec<Row>> {
-        self.output_schema.get_or_insert_with(|| Arc::clone(&row.schema));
+        self.output_schema
+            .get_or_insert_with(|| Arc::clone(&row.schema));
         self.buffered_rows.push(row);
         Ok(vec![])
     }

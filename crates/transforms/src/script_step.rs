@@ -33,12 +33,17 @@ pub struct ScriptStep {
 
 impl ScriptStep {
     pub fn new(config: ScriptStepConfig) -> Self {
-        Self { config, engine: None, ast: None, output_schema: None }
+        Self {
+            config,
+            engine: None,
+            ast: None,
+            output_schema: None,
+        }
     }
 
     pub fn from_json(value: serde_json::Value) -> Result<Box<dyn Transform>> {
-        let config: ScriptStepConfig = serde_json::from_value(value)
-            .map_err(|e| AjisaiError::Config(e.to_string()))?;
+        let config: ScriptStepConfig =
+            serde_json::from_value(value).map_err(|e| AjisaiError::Config(e.to_string()))?;
         Ok(Box::new(Self::new(config)))
     }
 }
