@@ -347,7 +347,11 @@ pub fn hop_workflow_to_ajisai(
             "SET_VARIABLES" | "SETVARIABLES" => {
                 // Expect attributes like "VAR_NAME" = "value" or a "variables" JSON array
                 let mut variables: Vec<(String, String)> = Vec::new();
-                if let Some(arr) = action.attributes.get("variables").and_then(|v| v.as_array()) {
+                if let Some(arr) = action
+                    .attributes
+                    .get("variables")
+                    .and_then(|v| v.as_array())
+                {
                     for entry in arr {
                         if let (Some(k), Some(v)) = (
                             entry.get("name").and_then(|v| v.as_str()),
@@ -364,7 +368,10 @@ pub fn hop_workflow_to_ajisai(
                         }
                     }
                 }
-                Box::new(SetVariablesAction { name: action.name.clone(), variables })
+                Box::new(SetVariablesAction {
+                    name: action.name.clone(),
+                    variables,
+                })
             }
 
             "HTTP" => Box::new(HttpWorkflowAction {

@@ -135,8 +135,10 @@ impl Transform for JsonFieldInput {
     }
 
     fn output_schema(&self, input: &RowSchema) -> Result<RowSchema> {
-        Ok(Arc::try_unwrap(Self::build_output_schema(input, &self.config.fields))
-            .unwrap_or_else(|arc| (*arc).clone()))
+        Ok(
+            Arc::try_unwrap(Self::build_output_schema(input, &self.config.fields))
+                .unwrap_or_else(|arc| (*arc).clone()),
+        )
     }
 
     async fn open(&mut self, _ctx: &ExecutionContext) -> Result<()> {

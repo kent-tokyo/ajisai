@@ -58,7 +58,10 @@ impl JsonFieldOutput {
         } else {
             input.fields.clone()
         };
-        fields.push(Field::new(self.config.target_field.clone(), ValueType::String));
+        fields.push(Field::new(
+            self.config.target_field.clone(),
+            ValueType::String,
+        ));
         Arc::new(RowSchema::new(fields))
     }
 
@@ -82,15 +85,31 @@ fn base64_encode(bytes: &[u8]) -> String {
     let mut out = String::with_capacity((bytes.len() + 2) / 3 * 4);
     for chunk in bytes.chunks(3) {
         let b0 = chunk[0] as usize;
-        let b1 = if chunk.len() > 1 { chunk[1] as usize } else { 0 };
-        let b2 = if chunk.len() > 2 { chunk[2] as usize } else { 0 };
+        let b1 = if chunk.len() > 1 {
+            chunk[1] as usize
+        } else {
+            0
+        };
+        let b2 = if chunk.len() > 2 {
+            chunk[2] as usize
+        } else {
+            0
+        };
         let _ = write!(
             out,
             "{}{}{}{}",
             TABLE[b0 >> 2] as char,
             TABLE[((b0 & 3) << 4) | (b1 >> 4)] as char,
-            if chunk.len() > 1 { TABLE[((b1 & 0xf) << 2) | (b2 >> 6)] as char } else { '=' },
-            if chunk.len() > 2 { TABLE[b2 & 0x3f] as char } else { '=' },
+            if chunk.len() > 1 {
+                TABLE[((b1 & 0xf) << 2) | (b2 >> 6)] as char
+            } else {
+                '='
+            },
+            if chunk.len() > 2 {
+                TABLE[b2 & 0x3f] as char
+            } else {
+                '='
+            },
         );
     }
     out
@@ -103,8 +122,7 @@ impl Transform for JsonFieldOutput {
     }
 
     fn output_schema(&self, input: &RowSchema) -> Result<RowSchema> {
-        Ok(Arc::try_unwrap(self.build_output_schema(input))
-            .unwrap_or_else(|arc| (*arc).clone()))
+        Ok(Arc::try_unwrap(self.build_output_schema(input)).unwrap_or_else(|arc| (*arc).clone()))
     }
 
     async fn open(&mut self, _ctx: &ExecutionContext) -> Result<()> {

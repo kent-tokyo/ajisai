@@ -44,7 +44,10 @@ impl XmlFileOutput {
         if config.encoding.is_empty() {
             config.encoding = "UTF-8".into();
         }
-        Ok(Box::new(Self { config, rows: Vec::new() }))
+        Ok(Box::new(Self {
+            config,
+            rows: Vec::new(),
+        }))
     }
 }
 
@@ -82,7 +85,11 @@ impl Transform for XmlFileOutput {
             let mut writer = Writer::new_with_indent(BufWriter::new(cursor), b' ', 2);
 
             writer
-                .write_event(Event::Decl(BytesDecl::new("1.0", Some(&self.config.encoding), None)))
+                .write_event(Event::Decl(BytesDecl::new(
+                    "1.0",
+                    Some(&self.config.encoding),
+                    None,
+                )))
                 .map_err(|e| AjisaiError::Io(std::io::Error::other(e.to_string())))?;
 
             let root_start = BytesStart::new(&self.config.root_element);
@@ -152,8 +159,24 @@ fn base64_encode(bytes: &[u8]) -> String {
         let b2 = chunk.get(2).copied().unwrap_or(0) as usize;
         let _ = write!(out, "{}", TABLE[b0 >> 2] as char);
         let _ = write!(out, "{}", TABLE[((b0 & 3) << 4) | (b1 >> 4)] as char);
-        let _ = write!(out, "{}", if chunk.len() > 1 { TABLE[((b1 & 0xf) << 2) | (b2 >> 6)] as char } else { '=' });
-        let _ = write!(out, "{}", if chunk.len() > 2 { TABLE[b2 & 0x3f] as char } else { '=' });
+        let _ = write!(
+            out,
+            "{}",
+            if chunk.len() > 1 {
+                TABLE[((b1 & 0xf) << 2) | (b2 >> 6)] as char
+            } else {
+                '='
+            }
+        );
+        let _ = write!(
+            out,
+            "{}",
+            if chunk.len() > 2 {
+                TABLE[b2 & 0x3f] as char
+            } else {
+                '='
+            }
+        );
     }
     out
 }

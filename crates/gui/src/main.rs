@@ -21,7 +21,8 @@ fn main() -> eframe::Result {
 
     // Parse --open <file> and --run arguments
     let args: Vec<String> = std::env::args().collect();
-    let preload: Option<std::path::PathBuf> = args.windows(2)
+    let preload: Option<std::path::PathBuf> = args
+        .windows(2)
         .find(|w| w[0] == "--open")
         .map(|w| std::path::PathBuf::from(&w[1]));
     let run_on_start = args.contains(&"--run".to_string());

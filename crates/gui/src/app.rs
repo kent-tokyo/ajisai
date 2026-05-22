@@ -47,9 +47,10 @@ fn setup_fonts(ctx: &egui::Context) {
 
     for path in candidates {
         if let Ok(data) = std::fs::read(path) {
-            fonts
-                .font_data
-                .insert("cjk".to_owned(), std::sync::Arc::new(egui::FontData::from_owned(data)));
+            fonts.font_data.insert(
+                "cjk".to_owned(),
+                std::sync::Arc::new(egui::FontData::from_owned(data)),
+            );
             // Append as fallback so Latin characters still use the default font
             fonts
                 .families

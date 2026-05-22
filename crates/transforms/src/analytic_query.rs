@@ -110,7 +110,11 @@ impl AnalyticQuery {
         }
         partition_fields
             .iter()
-            .map(|f| row.get(f).map(|v| v.to_display_string()).unwrap_or_default())
+            .map(|f| {
+                row.get(f)
+                    .map(|v| v.to_display_string())
+                    .unwrap_or_default()
+            })
             .collect::<Vec<_>>()
             .join("\x00")
     }
@@ -135,11 +139,7 @@ impl AnalyticQuery {
         }
     }
 
-    fn compute_partition(
-        &self,
-        partition: &[Row],
-        out_schema: Arc<RowSchema>,
-    ) -> Vec<Row> {
+    fn compute_partition(&self, partition: &[Row], out_schema: Arc<RowSchema>) -> Vec<Row> {
         let n = partition.len();
         let mut result = Vec::with_capacity(n);
 
@@ -289,8 +289,10 @@ impl Transform for AnalyticQuery {
     }
 
     fn output_schema(&self, input: &RowSchema) -> Result<RowSchema> {
-        Ok(Arc::try_unwrap(Self::build_output_schema(input, &self.config.analytics))
-            .unwrap_or_else(|arc| (*arc).clone()))
+        Ok(
+            Arc::try_unwrap(Self::build_output_schema(input, &self.config.analytics))
+                .unwrap_or_else(|arc| (*arc).clone()),
+        )
     }
 
     async fn open(&mut self, _ctx: &ExecutionContext) -> Result<()> {
@@ -357,10 +359,7 @@ mod tests {
             Field::new("dept", ValueType::String),
             Field::new("salary", ValueType::Integer),
         ]));
-        Row::new(
-            schema,
-            vec![Value::Str(dept.into()), Value::Int(salary)],
-        )
+        Row::new(schema, vec![Value::Str(dept.into()), Value::Int(salary)])
     }
 
     #[tokio::test]
@@ -410,7 +409,10 @@ mod tests {
         };
         let mut aq = AnalyticQuery::new(config);
         for sal in [10i64, 20, 30] {
-            let schema = Arc::new(RowSchema::new(vec![Field::new("salary", ValueType::Integer)]));
+            let schema = Arc::new(RowSchema::new(vec![Field::new(
+                "salary",
+                ValueType::Integer,
+            )]));
             aq.process(Row::new(schema, vec![Value::Int(sal)]))
                 .await
                 .unwrap();
