@@ -8,6 +8,18 @@ English | [日本語](README_ja.md) | [中文](README_zh.md)
 
 ---
 
+![Demo](docs/screenshots/demo.gif)
+
+| Branching pipeline | After execution | Properties panel |
+|:---:|:---:|:---:|
+| ![Pipeline](docs/screenshots/04_showcase_pipeline.png) | ![Run](docs/screenshots/05_showcase_run.png) | ![Properties](docs/screenshots/06_properties_panel.png) |
+
+| Startup | Japanese UI | Japanese run |
+|:---:|:---:|:---:|
+| ![Startup](docs/screenshots/01_startup.png) | ![Japanese](docs/screenshots/08_japanese_ui.png) | ![Japanese run](docs/screenshots/09_japanese_run.png) |
+
+---
+
 ## Why Ajisai?
 
 ### The problem with existing ETL tools
@@ -119,7 +131,7 @@ Reference them inside the pipeline as `${INPUT_DIR}`.
 
 ---
 
-## Supported Transforms (50)
+## Supported Transforms (53)
 
 ### I/O
 
@@ -129,6 +141,8 @@ Reference them inside the pipeline as `${INPUT_DIR}`.
 | `CsvFileOutput` | Write CSV files |
 | `JsonFileInput` | Read JSON files (array or JSONL format) |
 | `JsonFileOutput` | Write JSON files (array or JSONL format) |
+| `JsonFieldInput` | Parse a JSON string field into separate fields |
+| `JsonFieldOutput` | Serialize selected fields into a JSON string field |
 | `ExcelFileInput` | Read Excel files (.xlsx) |
 | `ExcelFileOutput` | Write Excel files (.xlsx) |
 | `ParquetFileInput` | Read Parquet files |
@@ -159,6 +173,7 @@ Reference them inside the pipeline as `${INPUT_DIR}`.
 | `ReplaceInString` | Search and replace across multiple field/pattern pairs |
 | `ConcatFields` | Join multiple fields with a separator into a new field |
 | `SplitFieldToRows` | Expand one delimited field into multiple rows |
+| `AnalyticQuery` | Window functions: ROW_NUMBER, RANK, LAG/LEAD, SUM/AVG/MIN/MAX over partition |
 | `MemoryGroupBy` | Group-by aggregation (sum / avg / min / max / count) |
 | `AppendStreams` | Merge multiple input streams |
 | `RowNormaliser` | Pivot wide to long |
@@ -272,6 +287,7 @@ ajisai/
 | Phase 3 | GUI — egui visual pipeline editor | Done |
 | Phase 4 | Multilingual UI, packaging, release CI | Done |
 | Phase 5 | 50 transforms: scripting (Rhai), sub-pipeline, file ops | Done |
+| Phase 6A | Window functions (AnalyticQuery), JSON field transforms, workflow actions | Done |
 
 ---
 

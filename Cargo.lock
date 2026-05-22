@@ -192,6 +192,7 @@ dependencies = [
  "ajisai-core",
  "async-trait",
  "quick-xml 0.37.5",
+ "reqwest",
  "serde",
  "serde_json",
  "thiserror 2.0.18",

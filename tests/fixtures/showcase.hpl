@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pipeline>
+  <name>Feature Showcase Pipeline</name>
+  <transform>
+    <name>CSV Input</name>
+    <type>CSVFileInput</type>
+    <filename>tests/fixtures/input.csv</filename>
+    <separator>,</separator>
+    <header>Y</header>
+    <xloc>135</xloc>
+    <yloc>200</yloc>
+  </transform>
+  <transform>
+    <name>Filter Adults</name>
+    <type>FilterRows</type>
+    <xloc>310</xloc>
+    <yloc>200</yloc>
+  </transform>
+  <transform>
+    <name>Write to Log</name>
+    <type>WriteToLog</type>
+    <xloc>485</xloc>
+    <yloc>80</yloc>
+  </transform>
+  <transform>
+    <name>Add Row Number</name>
+    <type>AddSequence</type>
+    <xloc>485</xloc>
+    <yloc>200</yloc>
+  </transform>
+  <transform>
+    <name>Deduplicate</name>
+    <type>Deduplicate</type>
+    <xloc>660</xloc>
+    <yloc>200</yloc>
+  </transform>
+  <transform>
+    <name>Pass-Through</name>
+    <type>Dummy</type>
+    <xloc>660</xloc>
+    <yloc>320</yloc>
+  </transform>
+  <transform>
+    <name>CSV Output</name>
+    <type>CSVFileOutput</type>
+    <filename>tests/fixtures/output_showcase.csv</filename>
+    <separator>,</separator>
+    <header>Y</header>
+    <xloc>835</xloc>
+    <yloc>200</yloc>
+  </transform>
+  <transform>
+    <name>JSON Output</name>
+    <type>JsonFileOutput</type>
+    <filename>tests/fixtures/output_showcase.json</filename>
+    <xloc>835</xloc>
+    <yloc>320</yloc>
+  </transform>
+  <order>
+    <hop><from>CSV Input</from><to>Filter Adults</to><enabled>Y</enabled></hop>
+    <hop><from>Filter Adults</from><to>Write to Log</to><enabled>Y</enabled></hop>
+    <hop><from>Filter Adults</from><to>Add Row Number</to><enabled>Y</enabled></hop>
+    <hop><from>Add Row Number</from><to>Deduplicate</to><enabled>Y</enabled></hop>
+    <hop><from>Add Row Number</from><to>Pass-Through</to><enabled>Y</enabled></hop>
+    <hop><from>Deduplicate</from><to>CSV Output</to><enabled>Y</enabled></hop>
+    <hop><from>Pass-Through</from><to>JSON Output</to><enabled>Y</enabled></hop>
+  </order>
+</pipeline>

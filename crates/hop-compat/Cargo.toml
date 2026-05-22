@@ -12,3 +12,4 @@ serde_json  = { workspace = true }
 quick-xml   = { version = "0.37", features = ["serialize"] }
 async-trait = { workspace = true }
 tokio       = { workspace = true }
+reqwest     = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }

@@ -2,11 +2,35 @@ use crate::{
     context::ExecutionContext,
     error::{AjisaiError, Result},
     pipeline::Pipeline,
-    value::Row,
+    value::{Field, Row, RowSchema, Value, ValueType},
 };
 use std::collections::HashMap;
+use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};
+
+/// Build an error row from the original row plus two error metadata fields.
+fn make_error_row(original: Row, err: &AjisaiError) -> Row {
+    let mut fields = original.schema.fields.clone();
+    fields.push(Field::new("__error_desc", ValueType::String));
+    fields.push(Field::new("__error_code", ValueType::String));
+    let error_schema = Arc::new(RowSchema::new(fields));
+
+    let mut values = original.values.clone();
+    values.push(Value::Str(err.to_string()));
+    values.push(Value::Str(error_code(err).into()));
+    Row::new(error_schema, values)
+}
+
+fn error_code(err: &AjisaiError) -> &'static str {
+    match err {
+        AjisaiError::Parse(_) => "PARSE_ERROR",
+        AjisaiError::Io(_) => "IO_ERROR",
+        AjisaiError::Config(_) => "CONFIG_ERROR",
+        AjisaiError::Pipeline(_) => "PIPELINE_ERROR",
+        _ => "ERROR",
+    }
+}
 
 /// Send a row to outgoing channels.
 /// - `target = None`  → broadcast to all senders
@@ -108,18 +132,18 @@ impl PipelineEngine {
             let node_id = node.id.clone();
             let ctx = context.clone();
 
-            // Outgoing senders for this node: (target_node_id, sender)
-            let out_senders: Vec<(String, mpsc::Sender<Row>)> = self
-                .pipeline
-                .hops
-                .iter()
-                .filter(|h| h.from == node_id)
-                .filter_map(|h| {
-                    senders
-                        .remove(&(h.from.clone(), h.to.clone()))
-                        .map(|tx| (h.to.clone(), tx))
-                })
-                .collect();
+            // Outgoing senders split into normal and error hops
+            let mut out_senders: Vec<(String, mpsc::Sender<Row>)> = Vec::new();
+            let mut error_senders: Vec<(String, mpsc::Sender<Row>)> = Vec::new();
+            for h in self.pipeline.hops.iter().filter(|h| h.from == node_id) {
+                if let Some(tx) = senders.remove(&(h.from.clone(), h.to.clone())) {
+                    if h.is_error {
+                        error_senders.push((h.to.clone(), tx));
+                    } else {
+                        out_senders.push((h.to.clone(), tx));
+                    }
+                }
+            }
 
             // Incoming receivers in hop-declaration order (side inputs are the last N)
             let mut in_receivers: Vec<mpsc::Receiver<Row>> = self
@@ -173,14 +197,22 @@ impl PipelineEngine {
                     // Process main input stream
                     for mut rx in main_receivers {
                         while let Some(row) = rx.recv().await {
-                            let out_rows = node.transform.process(row).await?;
-                            for out_row in out_rows {
-                                send_row(
-                                    &out_row,
-                                    node.transform.route(&out_row).as_deref(),
-                                    &out_senders,
-                                )
-                                .await?;
+                            match node.transform.process(row.clone()).await {
+                                Ok(out_rows) => {
+                                    for out_row in out_rows {
+                                        send_row(
+                                            &out_row,
+                                            node.transform.route(&out_row).as_deref(),
+                                            &out_senders,
+                                        )
+                                        .await?;
+                                    }
+                                }
+                                Err(e) if !error_senders.is_empty() => {
+                                    let error_row = make_error_row(row, &e);
+                                    send_row(&error_row, None, &error_senders).await?;
+                                }
+                                Err(e) => return Err(e),
                             }
                         }
                     }

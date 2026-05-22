@@ -8,6 +8,18 @@
 
 ---
 
+![Demo](docs/screenshots/demo.gif)
+
+| 分支管道 | 执行结果 | 属性面板 |
+|:---:|:---:|:---:|
+| ![Pipeline](docs/screenshots/04_showcase_pipeline.png) | ![Run](docs/screenshots/05_showcase_run.png) | ![Properties](docs/screenshots/06_properties_panel.png) |
+
+| 启动界面 | 日语界面 | 执行后 |
+|:---:|:---:|:---:|
+| ![Startup](docs/screenshots/01_startup.png) | ![Japanese](docs/screenshots/08_japanese_ui.png) | ![Japanese run](docs/screenshots/09_japanese_run.png) |
+
+---
+
 ## 为什么选择 Ajisai？
 
 ### 现有 ETL 工具的痛点
@@ -119,7 +131,7 @@ ajisai-cli run -p pipeline.hpl -e INPUT_DIR=/data -e OUTPUT_DIR=/output
 
 ---
 
-## 支持的 Transform（50 个）
+## 支持的 Transform（53 个）
 
 ### I/O
 
@@ -129,6 +141,8 @@ ajisai-cli run -p pipeline.hpl -e INPUT_DIR=/data -e OUTPUT_DIR=/output
 | `CsvFileOutput` | 写入 CSV 文件 |
 | `JsonFileInput` | 读取 JSON 文件（数组或 JSONL 格式）|
 | `JsonFileOutput` | 写入 JSON 文件（数组或 JSONL 格式）|
+| `JsonFieldInput` | 解析 JSON 字符串字段，展开为独立字段 |
+| `JsonFieldOutput` | 将指定字段序列化为 JSON 字符串字段 |
 | `ExcelFileInput` | 读取 Excel 文件（.xlsx）|
 | `ExcelFileOutput` | 写入 Excel 文件（.xlsx）|
 | `ParquetFileInput` | 读取 Parquet 文件 |
@@ -159,6 +173,7 @@ ajisai-cli run -p pipeline.hpl -e INPUT_DIR=/data -e OUTPUT_DIR=/output
 | `ReplaceInString` | 字符串搜索替换 |
 | `ConcatFields` | 用分隔符将多个字段拼接为新字段 |
 | `SplitFieldToRows` | 将一个分隔字段展开为多行 |
+| `AnalyticQuery` | 窗口函数（ROW_NUMBER, RANK, LAG/LEAD，分区内 SUM/AVG/MIN/MAX）|
 | `MemoryGroupBy` | 分组聚合（sum / avg / min / max / count）|
 | `AppendStreams` | 合并多个输入流 |
 | `RowNormaliser` | 宽表转长表 |
@@ -272,6 +287,7 @@ ajisai/
 | 阶段 3 | GUI — egui 可视化管道编辑器 | 完成 |
 | 阶段 4 | 多语言 UI、打包、发布 CI | 完成 |
 | 阶段 5 | 50 个 Transform：脚本（Rhai）、子管道、文件操作 | 完成 |
+| 阶段 6A | 窗口函数（AnalyticQuery）、JSON 字段 Transform、工作流动作扩展 | 完成 |
 
 ---
 

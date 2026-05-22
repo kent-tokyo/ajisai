@@ -6,6 +6,10 @@ use serde::{Deserialize, Serialize};
 pub struct Hop {
     pub from: String,
     pub to: String,
+    /// When true, this hop carries error rows instead of normal output rows.
+    /// Error rows are emitted when the source transform's process() returns Err.
+    #[serde(default)]
+    pub is_error: bool,
 }
 
 /// A single node in the pipeline DAG
@@ -41,6 +45,16 @@ impl Pipeline {
         self.hops.push(Hop {
             from: from.into(),
             to: to.into(),
+            is_error: false,
+        });
+    }
+
+    /// Add a hop that carries error rows — rows emitted when the source transform fails.
+    pub fn add_error_hop(&mut self, from: impl Into<String>, to: impl Into<String>) {
+        self.hops.push(Hop {
+            from: from.into(),
+            to: to.into(),
+            is_error: true,
         });
     }
 

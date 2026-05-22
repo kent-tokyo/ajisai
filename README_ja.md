@@ -8,6 +8,18 @@ Apache Hop 互換の超軽量・爆速 ETL エンジン。Rust で再構築。
 
 ---
 
+![Demo](docs/screenshots/demo.gif)
+
+| 分岐パイプライン | 実行結果 | プロパティパネル |
+|:---:|:---:|:---:|
+| ![Pipeline](docs/screenshots/04_showcase_pipeline.png) | ![Run](docs/screenshots/05_showcase_run.png) | ![Properties](docs/screenshots/06_properties_panel.png) |
+
+| 起動画面 | 日本語 UI | 実行後 |
+|:---:|:---:|:---:|
+| ![Startup](docs/screenshots/01_startup.png) | ![Japanese](docs/screenshots/08_japanese_ui.png) | ![Japanese run](docs/screenshots/09_japanese_run.png) |
+
+---
+
 ## なぜ Ajisai を選ぶのか
 
 ### 既存の ETL ツールの問題
@@ -119,7 +131,7 @@ ajisai-cli run -p pipeline.hpl -e INPUT_DIR=/data -e OUTPUT_DIR=/output
 
 ---
 
-## サポートする Transform (50種)
+## サポートする Transform (53種)
 
 ### I/O
 
@@ -129,6 +141,8 @@ ajisai-cli run -p pipeline.hpl -e INPUT_DIR=/data -e OUTPUT_DIR=/output
 | `CsvFileOutput` | CSV ファイル書き込み |
 | `JsonFileInput` | JSON ファイル読み込み（Array / JSONL 両対応）|
 | `JsonFileOutput` | JSON ファイル書き込み（Array / JSONL 両対応）|
+| `JsonFieldInput` | JSON 文字列フィールドをパースして個別フィールドに展開 |
+| `JsonFieldOutput` | 指定フィールドを JSON 文字列フィールドに変換 |
 | `ExcelFileInput` | Excel ファイル読み込み（.xlsx）|
 | `ExcelFileOutput` | Excel ファイル書き込み（.xlsx）|
 | `ParquetFileInput` | Parquet ファイル読み込み |
@@ -159,6 +173,7 @@ ajisai-cli run -p pipeline.hpl -e INPUT_DIR=/data -e OUTPUT_DIR=/output
 | `ReplaceInString` | 文字列の検索・置換 |
 | `ConcatFields` | 複数フィールドを区切り文字で結合 |
 | `SplitFieldToRows` | 1 フィールドを区切り文字で複数行に展開 |
+| `AnalyticQuery` | ウィンドウ関数（ROW_NUMBER, RANK, LAG/LEAD, パーティション内 SUM/AVG/MIN/MAX）|
 | `MemoryGroupBy` | グループ集計（sum / avg / min / max / count）|
 | `AppendStreams` | 複数の入力ストリームを結合 |
 | `RowNormaliser` | 横持ち→縦持ち変換 |
@@ -272,6 +287,7 @@ ajisai/
 | Phase 3 | GUI — egui ビジュアルパイプラインエディタ | 完成 |
 | Phase 4 | 多言語 UI・パッケージング・リリース CI | 完成 |
 | Phase 5 | Transform 50種：スクリプト（Rhai）・サブパイプライン・ファイル操作 | 完成 |
+| Phase 6A | ウィンドウ関数（AnalyticQuery）・JSON フィールド Transform・ワークフローアクション拡充 | 完成 |
 
 ---
 

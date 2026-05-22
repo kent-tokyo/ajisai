@@ -14,6 +14,7 @@ pub struct AjisaiApp {
     canvas_zoom: f32,
     run_rx: Option<mpsc::Receiver<String>>,
     undo: UndoStack,
+    run_on_start: bool,
 }
 
 impl Default for AjisaiApp {
@@ -25,13 +26,109 @@ impl Default for AjisaiApp {
             canvas_zoom: 1.0,
             run_rx: None,
             undo: UndoStack::default(),
+            run_on_start: false,
         }
     }
 }
 
+fn setup_fonts(ctx: &egui::Context) {
+    let mut fonts = egui::FontDefinitions::default();
+
+    // CJK font search paths by platform
+    let candidates: &[&str] = &[
+        // macOS — Hiragino Kaku Gothic
+        "/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc",
+        // Windows — MS Gothic
+        "C:\\Windows\\Fonts\\msgothic.ttc",
+        // Linux — Noto CJK
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/noto-cjk/NotoSansCJKjp-Regular.otf",
+    ];
+
+    for path in candidates {
+        if let Ok(data) = std::fs::read(path) {
+            fonts
+                .font_data
+                .insert("cjk".to_owned(), std::sync::Arc::new(egui::FontData::from_owned(data)));
+            // Append as fallback so Latin characters still use the default font
+            fonts
+                .families
+                .entry(egui::FontFamily::Proportional)
+                .or_default()
+                .push("cjk".to_owned());
+            fonts
+                .families
+                .entry(egui::FontFamily::Monospace)
+                .or_default()
+                .push("cjk".to_owned());
+            break;
+        }
+    }
+
+    ctx.set_fonts(fonts);
+}
+
 impl AjisaiApp {
-    pub fn new(_cc: &eframe::CreationContext) -> Self {
+    pub fn new(cc: &eframe::CreationContext) -> Self {
+        setup_fonts(&cc.egui_ctx);
         Self::default()
+    }
+
+    /// Create a new app and pre-load a .hpl file (for --open CLI flag).
+    pub fn with_open(cc: &eframe::CreationContext, path: std::path::PathBuf) -> Self {
+        setup_fonts(&cc.egui_ctx);
+        let mut app = Self::default();
+        app.load_hpl_from_path(&path);
+        app
+    }
+
+    /// Create a new app, pre-load a .hpl file, and auto-run the pipeline on first frame.
+    pub fn with_open_and_run(cc: &eframe::CreationContext, path: std::path::PathBuf) -> Self {
+        let mut app = Self::with_open(cc, path);
+        app.run_on_start = true;
+        app
+    }
+
+    /// Create a new app, pre-load a .hpl file, and pre-select the first node.
+    pub fn with_open_select_first(cc: &eframe::CreationContext, path: std::path::PathBuf) -> Self {
+        let mut app = Self::with_open(cc, path);
+        if let Some(node) = app.pipeline.nodes.first() {
+            app.ui.selected_node = Some(node.id.clone());
+        }
+        app
+    }
+
+    fn load_hpl_from_path(&mut self, path: &std::path::Path) {
+        match ajisai_hop_compat::load_pipeline_file(path) {
+            Ok(hop) => {
+                let mut ps = PipelineState::new(&hop.name);
+                for (i, tr) in hop.transforms.iter().enumerate() {
+                    let cols = 3usize;
+                    let pos = match (tr.xloc, tr.yloc) {
+                        (Some(x), Some(y)) => [x as f32, y as f32],
+                        _ => [
+                            40.0 + (i % cols) as f32 * (NODE_W + 60.0),
+                            40.0 + (i / cols) as f32 * (NODE_H + 80.0),
+                        ],
+                    };
+                    let mapped_type = ajisai_hop_compat::map_transform_type(&tr.type_name);
+                    let mut node = Node::new(&tr.name, mapped_type, pos);
+                    node.label = tr.name.clone();
+                    node.config = serde_json::to_value(&tr.attributes).unwrap_or_default();
+                    ps.add_node(node);
+                }
+                for h in &hop.order {
+                    if h.enabled.unwrap_or(true) {
+                        ps.add_edge(&h.from, &h.to);
+                    }
+                }
+                self.pipeline = ps;
+                self.ui.current_file = Some(path.to_path_buf());
+            }
+            Err(e) => {
+                self.ui.log(format!("Failed to open {:?}: {}", path, e));
+            }
+        }
     }
 
     // ── Undo helpers ─────────────────────────────────────────────────────
@@ -106,6 +203,11 @@ impl AjisaiApp {
             } else {
                 self.save_hpl_dialog();
             }
+        }
+
+        // Ctrl+R / ⌘+R → run pipeline
+        if ctx.input(|i| i.key_pressed(egui::Key::R) && (i.modifiers.ctrl || i.modifiers.command)) {
+            self.run_pipeline(ctx);
         }
     }
 
@@ -797,7 +899,8 @@ impl AjisaiApp {
                             40.0 + (i % cols) as f32 * (NODE_W + 60.0),
                             40.0 + (i / cols) as f32 * (NODE_H + 80.0),
                         ];
-                        let mut node = Node::new(&tr.name, &tr.type_name, pos);
+                        let mapped_type = ajisai_hop_compat::map_transform_type(&tr.type_name);
+                        let mut node = Node::new(&tr.name, mapped_type, pos);
                         node.label = tr.name.clone();
                         node.config = serde_json::to_value(&tr.attributes).unwrap_or_default();
                         ps.add_node(node);
@@ -920,6 +1023,7 @@ impl AjisaiApp {
                     .unwrap_or(e.to.as_str())
                     .to_owned(),
                 enabled: Some(true),
+                error_hop: None,
             })
             .collect();
 
@@ -936,6 +1040,11 @@ impl eframe::App for AjisaiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.poll_engine();
         self.handle_shortcuts(ctx);
+
+        if self.run_on_start {
+            self.run_on_start = false;
+            self.run_pipeline(ctx);
+        }
 
         // Reflect current filename in window title
         let title = match &self.ui.current_file {

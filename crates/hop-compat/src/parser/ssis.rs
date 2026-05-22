@@ -114,6 +114,7 @@ pub fn parse_dtsx(xml: &str) -> Result<HopPipeline, AjisaiError> {
                                 from: from_name.clone(),
                                 to: to_name.clone(),
                                 enabled: Some(true),
+                                error_hop: None,
                             });
                         }
                     }
@@ -164,6 +165,7 @@ pub fn parse_dtsx(xml: &str) -> Result<HopPipeline, AjisaiError> {
                                 from: from_name.clone(),
                                 to: to_name.clone(),
                                 enabled: Some(true),
+                                error_hop: None,
                             });
                         }
                     }

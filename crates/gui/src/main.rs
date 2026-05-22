@@ -19,6 +19,14 @@ fn main() -> eframe::Result {
     let lang = std::env::var("AJISAI_LANG").unwrap_or_else(|_| "en".into());
     rust_i18n::set_locale(&lang);
 
+    // Parse --open <file> and --run arguments
+    let args: Vec<String> = std::env::args().collect();
+    let preload: Option<std::path::PathBuf> = args.windows(2)
+        .find(|w| w[0] == "--open")
+        .map(|w| std::path::PathBuf::from(&w[1]));
+    let run_on_start = args.contains(&"--run".to_string());
+    let select_first = args.contains(&"--select-first".to_string());
+
     let options = NativeOptions {
         viewport: ViewportBuilder::default()
             .with_title("Ajisai — Visual ETL")
@@ -30,6 +38,18 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "Ajisai",
         options,
-        Box::new(|cc| Ok(Box::new(AjisaiApp::new(cc)))),
+        Box::new(move |cc| {
+            if let Some(path) = preload {
+                if run_on_start {
+                    Ok(Box::new(AjisaiApp::with_open_and_run(cc, path)))
+                } else if select_first {
+                    Ok(Box::new(AjisaiApp::with_open_select_first(cc, path)))
+                } else {
+                    Ok(Box::new(AjisaiApp::with_open(cc, path)))
+                }
+            } else {
+                Ok(Box::new(AjisaiApp::new(cc)))
+            }
+        }),
     )
 }

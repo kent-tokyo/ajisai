@@ -57,6 +57,7 @@ pub fn parse_ktr(xml: &str) -> Result<HopPipeline, AjisaiError> {
                             from: String::new(),
                             to: String::new(),
                             enabled: Some(true),
+                            error_hop: None,
                         });
                     }
                     _ => {}

@@ -10,11 +10,16 @@ use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AddSequenceConfig {
+    #[serde(default = "default_field_name")]
     pub field_name: String,
     #[serde(default = "default_one")]
     pub start: i64,
     #[serde(default = "default_one")]
     pub increment: i64,
+}
+
+fn default_field_name() -> String {
+    "seq".into()
 }
 
 fn default_one() -> i64 {

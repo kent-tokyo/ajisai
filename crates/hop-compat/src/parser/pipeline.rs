@@ -38,6 +38,7 @@ pub fn parse_hpl(xml: &str) -> Result<HopPipeline, AjisaiError> {
                             from: String::new(),
                             to: String::new(),
                             enabled: Some(true),
+                            error_hop: None,
                         });
                     }
                     _ => {}
@@ -92,6 +93,7 @@ pub fn parse_hpl(xml: &str) -> Result<HopPipeline, AjisaiError> {
                             "from" => h.from = text.clone(),
                             "to" => h.to = text.clone(),
                             "enabled" => h.enabled = Some(text == "Y" || text == "true"),
+                            "error_hop" => h.error_hop = Some(text == "Y" || text == "true"),
                             _ => {}
                         }
                     }
@@ -124,6 +126,7 @@ pub fn parse_hpl(xml: &str) -> Result<HopPipeline, AjisaiError> {
                         from: String::new(),
                         to: String::new(),
                         enabled: Some(true),
+                        error_hop: None,
                     };
                     for attr in e.attributes().flatten() {
                         let key = String::from_utf8_lossy(attr.key.as_ref()).into_owned();
@@ -171,7 +174,11 @@ pub fn hop_pipeline_to_ajisai(
 
     for hop in hop.order {
         if hop.enabled.unwrap_or(true) {
-            pipeline.add_hop(hop.from, hop.to);
+            if hop.error_hop.unwrap_or(false) {
+                pipeline.add_error_hop(hop.from, hop.to);
+            } else {
+                pipeline.add_hop(hop.from, hop.to);
+            }
         }
     }
 
@@ -179,7 +186,7 @@ pub fn hop_pipeline_to_ajisai(
 }
 
 /// Map Apache Hop transform type names to ajisai type names
-fn map_transform_type(hop_type: &str) -> &str {
+pub fn map_transform_type(hop_type: &str) -> &str {
     match hop_type {
         "CSVFileInput" | "CsvInput" => "CsvFileInput",
         "CSVFileOutput" | "CsvOutput" => "CsvFileOutput",
@@ -223,6 +230,11 @@ fn map_transform_type(hop_type: &str) -> &str {
         "NumberRange" => "NumberRange",
         "ValueMapper" => "ValueMapper",
         "ExecuteSQL" | "ExecSQL" => "ExecuteSQL",
+        // Phase 6B additions
+        "DBLookup" => "DatabaseLookup",
+        "JsonInput" => "JsonFieldInput",
+        "JsonOutput" => "JsonFieldOutput",
+        "XMLOutput" | "XmlOutput" => "XmlFileOutput",
         other => other,
     }
 }

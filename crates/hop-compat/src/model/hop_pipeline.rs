@@ -36,4 +36,5 @@ pub struct HopHop {
     pub from: String,
     pub to: String,
     pub enabled: Option<bool>,
+    pub error_hop: Option<bool>,
 }

@@ -18,6 +18,9 @@ pub mod get_file_names;
 pub mod get_variable;
 pub mod if_null;
 pub mod json;
+pub mod json_field_input;
+pub mod json_field_output;
+pub mod analytic_query;
 pub mod load_file_content;
 pub mod memory_group_by;
 pub mod merge_join;
@@ -45,6 +48,7 @@ pub mod value_mapper;
 pub mod write_to_file;
 pub mod write_to_log;
 pub mod xml_file_input;
+pub mod xml_file_output;
 
 pub use abort::Abort;
 pub use add_sequence::AddSequence;
@@ -66,6 +70,9 @@ pub use get_file_names::GetFileNames;
 pub use get_variable::GetVariable;
 pub use if_null::IfNull;
 pub use json::{JsonFileInput, JsonFileOutput};
+pub use json_field_input::JsonFieldInput;
+pub use json_field_output::JsonFieldOutput;
+pub use analytic_query::AnalyticQuery;
 pub use load_file_content::LoadFileContent;
 pub use memory_group_by::MemoryGroupBy;
 pub use merge_join::MergeJoin;
@@ -91,6 +98,7 @@ pub use value_mapper::ValueMapper;
 pub use write_to_file::WriteToFile;
 pub use write_to_log::WriteToLog;
 pub use xml_file_input::XmlFileInput;
+pub use xml_file_output::XmlFileOutput;
 
 use std::sync::Arc;
 
@@ -214,6 +222,10 @@ pub fn default_registry() -> TransformRegistry {
         Arc::new(|v| xml_file_input::XmlFileInput::from_json(v)),
     );
     reg.register(
+        "XmlFileOutput",
+        Arc::new(|v| xml_file_output::XmlFileOutput::from_json(v)),
+    );
+    reg.register(
         "RestClient",
         Arc::new(|v| rest_client::RestClient::from_json(v)),
     );
@@ -279,6 +291,18 @@ pub fn default_registry() -> TransformRegistry {
     reg.register(
         "PipelineExecutor",
         Arc::new(|v| pipeline_executor::PipelineExecutor::from_json(v)),
+    );
+    reg.register(
+        "JsonFieldInput",
+        Arc::new(|v| json_field_input::JsonFieldInput::from_json(v)),
+    );
+    reg.register(
+        "JsonFieldOutput",
+        Arc::new(|v| json_field_output::JsonFieldOutput::from_json(v)),
+    );
+    reg.register(
+        "AnalyticQuery",
+        Arc::new(|v| analytic_query::AnalyticQuery::from_json(v)),
     );
 
     reg
