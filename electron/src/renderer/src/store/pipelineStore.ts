@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { PipelineState, Node, Edge, NodeStatus, TransformCategory } from '../types/pipeline'
+import type { PipelineState, Node, Edge, NodeStatus, TransformCategory, PipelineMetrics, NodeMetrics } from '../types/pipeline'
 
 interface PipelineStore {
   pipeline: PipelineState
@@ -8,6 +8,10 @@ interface PipelineStore {
   isRunning: boolean
   logLines: string[]
   categories: TransformCategory[]
+
+  // Metrics tracking
+  currentMetrics: PipelineMetrics | null
+  nodeMetricsMap: Record<string, NodeMetrics>
 
   // Undo/Redo
   undoStack: PipelineState[]
@@ -33,6 +37,11 @@ interface PipelineStore {
 
   setCategories: (categories: TransformCategory[]) => void
 
+  // Metrics
+  recordNodeMetrics: (nodeId: string, metrics: Partial<NodeMetrics>) => void
+  resetMetrics: () => void
+  finalizeMetrics: () => void
+
   // Undo/Redo
   undo: () => void
   redo: () => void
@@ -55,6 +64,8 @@ export const usePipelineStore = create<PipelineStore>((set, get) => ({
   isRunning: false,
   logLines: [],
   categories: [],
+  currentMetrics: null,
+  nodeMetricsMap: {},
   undoStack: [],
   redoStack: [],
 
@@ -190,6 +201,48 @@ export const usePipelineStore = create<PipelineStore>((set, get) => ({
       selectedNodeId: null,
       nodeStatuses: {},
     }
+  }),
+
+  recordNodeMetrics: (nodeId, metrics) => set((state) => {
+    const existing = state.nodeMetricsMap[nodeId] || {
+      node_id: nodeId,
+      node_label: state.pipeline.nodes.find((n) => n.id === nodeId)?.label || nodeId,
+      type_name: state.pipeline.nodes.find((n) => n.id === nodeId)?.type_name || '',
+      elapsed_ms: 0,
+      rows_in: 0,
+      rows_out: 0,
+      throughput: 0,
+    }
+    return {
+      nodeMetricsMap: {
+        ...state.nodeMetricsMap,
+        [nodeId]: { ...existing, ...metrics }
+      }
+    }
+  }),
+
+  resetMetrics: () => set({
+    currentMetrics: null,
+    nodeMetricsMap: {},
+  }),
+
+  finalizeMetrics: () => set((state) => {
+    const nodeMetrics = Object.values(state.nodeMetricsMap)
+    const totalElapsedMs = Math.max(...nodeMetrics.map((m) => m.elapsed_ms), 0)
+    const totalRowsRead = nodeMetrics.reduce((sum, m) => sum + m.rows_in, 0)
+    const totalRowsWritten = nodeMetrics.reduce((sum, m) => sum + m.rows_out, 0)
+    const avgThroughput = totalElapsedMs > 0 ? totalRowsWritten / (totalElapsedMs / 1000) : 0
+
+    const metrics: PipelineMetrics = {
+      pipeline_name: state.pipeline.name,
+      total_elapsed_ms: totalElapsedMs,
+      total_rows_read: totalRowsRead,
+      total_rows_written: totalRowsWritten,
+      node_metrics: nodeMetrics,
+      avg_throughput: avgThroughput,
+    }
+
+    return { currentMetrics: metrics }
   }),
 
   canUndo: () => get().undoStack.length > 0,

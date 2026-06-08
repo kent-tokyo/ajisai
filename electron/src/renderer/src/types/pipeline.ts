@@ -44,3 +44,26 @@ export interface ExecutionStats {
   rows_read: number
   rows_written: number
 }
+
+export interface NodeMetrics {
+  node_id: string
+  node_label: string
+  type_name: string
+  elapsed_ms: number
+  rows_in: number
+  rows_out: number
+  throughput: number // rows/sec
+  start_time?: number
+  end_time?: number
+}
+
+export interface PipelineMetrics {
+  pipeline_name: string
+  total_elapsed_ms: number
+  total_rows_read: number
+  total_rows_written: number
+  node_metrics: NodeMetrics[]
+  start_time?: number
+  end_time?: number
+  avg_throughput: number // total_rows_written / (total_elapsed_ms / 1000)
+}
