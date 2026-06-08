@@ -1,5 +1,12 @@
 export type FieldType = 'string' | 'number' | 'boolean' | 'select' | 'textarea' | 'stringArray' | 'json'
 
+export interface FormTemplate {
+  name: string
+  label: string
+  description: string
+  config: Record<string, unknown>
+}
+
 export type ValidationRule =
   | { type: 'pattern', value: RegExp, message: string }
   | { type: 'minLength', value: number, message?: string }
@@ -72,9 +79,36 @@ export const FORM_DESCRIPTORS: Record<string, FormField[]> = {
   ],
 
   CsvFileOutput: [
-    { key: 'filename', label: 'File path', type: 'string', required: true },
-    { key: 'delimiter', label: 'Delimiter', type: 'string', placeholder: ',' },
-    { key: 'header', label: 'Write header', type: 'boolean' },
+    {
+      key: 'filename',
+      label: 'File path',
+      type: 'string',
+      required: true,
+      group: 'Output',
+      validations: [
+        { type: 'pattern', value: /\.csv$/i, message: 'Must be .csv file' }
+      ],
+      examples: ['output.csv', '/tmp/results.csv'],
+    },
+    {
+      key: 'delimiter',
+      label: 'Delimiter',
+      type: 'string',
+      default: ',',
+      placeholder: ',',
+      group: 'Format',
+      validations: [
+        { type: 'maxLength', value: 1 }
+      ],
+      examples: [',', '|', ';'],
+    },
+    {
+      key: 'header',
+      label: 'Write header row',
+      type: 'boolean',
+      default: true,
+      group: 'Format',
+    },
   ],
 
   JsonFileInput: [
@@ -167,10 +201,43 @@ export const FORM_DESCRIPTORS: Record<string, FormField[]> = {
   ],
 
   RestClient: [
-    { key: 'url', label: 'URL', type: 'string', required: true },
-    { key: 'method', label: 'Method', type: 'select', options: ['GET', 'POST', 'PUT', 'DELETE'] },
-    { key: 'headers', label: 'Headers (JSON)', type: 'json' },
-    { key: 'body', label: 'Body', type: 'textarea', rows: 4 },
+    {
+      key: 'url',
+      label: 'URL',
+      type: 'string',
+      required: true,
+      group: 'Request',
+      examples: ['https://api.example.com/data', 'http://localhost:8080/users'],
+      validations: [
+        { type: 'pattern', value: /^https?:\/\//, message: 'Must start with http:// or https://' }
+      ],
+    },
+    {
+      key: 'method',
+      label: 'HTTP Method',
+      type: 'select',
+      options: ['GET', 'POST', 'PUT', 'DELETE'],
+      default: 'GET',
+      group: 'Request',
+    },
+    {
+      key: 'headers',
+      label: 'Headers (JSON)',
+      type: 'json',
+      group: 'Options',
+      dependsOn: { field: 'method', value: 'POST' },
+      examples: ['{"Content-Type": "application/json", "Authorization": "Bearer token"}'],
+      help: 'Request headers (shown for POST method only)',
+    },
+    {
+      key: 'body',
+      label: 'Request Body',
+      type: 'textarea',
+      rows: 4,
+      group: 'Options',
+      dependsOn: { field: 'method', value: 'POST' },
+      help: 'Request payload (shown for POST method only)',
+    },
   ],
 
   GetFileNames: [
@@ -218,7 +285,22 @@ export const FORM_DESCRIPTORS: Record<string, FormField[]> = {
   ],
 
   SortRows: [
-    { key: 'keys', label: 'Sort keys (JSON)', type: 'json', required: true },
+    {
+      key: 'keys',
+      label: 'Sort keys (JSON)',
+      type: 'json',
+      required: true,
+      examples: [
+        '[{"field": "age", "order": "asc"}]',
+        '[{"field": "name", "order": "asc"}, {"field": "date", "order": "desc"}]',
+      ],
+      help: 'Sort by field(s): [{"field": "name", "order": "asc|desc"}]',
+      validations: [
+        { type: 'custom', fn: (v) => {
+          try { const arr = JSON.parse(v); return Array.isArray(arr); } catch { return false; }
+        }, message: 'Must be valid JSON array' }
+      ],
+    },
   ],
 
   AddConstants: [
@@ -226,8 +308,27 @@ export const FORM_DESCRIPTORS: Record<string, FormField[]> = {
   ],
 
   AddSequence: [
-    { key: 'field_name', label: 'Field name', type: 'string', required: true },
-    { key: 'start', label: 'Start value', type: 'number' },
+    {
+      key: 'field_name',
+      label: 'Field name',
+      type: 'string',
+      required: true,
+      group: 'Sequence',
+      validations: [
+        { type: 'pattern', value: /^[a-zA-Z_][a-zA-Z0-9_]*$/, message: 'Invalid field name' }
+      ],
+      examples: ['id', 'row_number', 'sequence'],
+    },
+    {
+      key: 'start',
+      label: 'Start value',
+      type: 'number',
+      default: 1,
+      group: 'Sequence',
+      validations: [
+        { type: 'min', value: 0 }
+      ],
+    },
   ],
 
   CalculatorStep: [
@@ -366,5 +467,99 @@ export const FORM_DESCRIPTORS: Record<string, FormField[]> = {
   SwitchCase: [
     { key: 'field', label: 'Field to switch on', type: 'string', required: true },
     { key: 'cases', label: 'Cases (JSON)', type: 'json', required: true },
+  ],
+}
+
+// === FORM TEMPLATES (よく使う設定プリセット) ===
+
+export const FORM_TEMPLATES: Record<string, FormTemplate[]> = {
+  CsvFileInput: [
+    {
+      name: 'csv_default',
+      label: 'CSV (Default)',
+      description: 'Standard CSV with header',
+      config: { delimiter: ',', has_header: true, encoding: 'UTF-8' },
+    },
+    {
+      name: 'csv_pipe',
+      label: 'CSV (Pipe-delimited)',
+      description: 'Pipe-separated values',
+      config: { delimiter: '|', has_header: true, encoding: 'UTF-8' },
+    },
+    {
+      name: 'csv_tab',
+      label: 'CSV (Tab-delimited)',
+      description: 'Tab-separated values',
+      config: { delimiter: '\t', has_header: true, encoding: 'UTF-8' },
+    },
+  ],
+
+  RestClient: [
+    {
+      name: 'rest_get_json',
+      label: 'GET JSON',
+      description: 'Simple GET request',
+      config: { method: 'GET' },
+    },
+    {
+      name: 'rest_post_json',
+      label: 'POST JSON',
+      description: 'POST with JSON headers and body',
+      config: {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      },
+    },
+  ],
+
+  TableOutput: [
+    {
+      name: 'table_insert',
+      label: 'Insert mode',
+      description: 'Append rows to table',
+      config: { mode: 'insert', batch_size: 1000 },
+    },
+    {
+      name: 'table_upsert',
+      label: 'Upsert mode',
+      description: 'Update if exists, insert otherwise',
+      config: { mode: 'upsert', batch_size: 1000 },
+    },
+    {
+      name: 'table_replace',
+      label: 'Replace mode',
+      description: 'Truncate and rewrite',
+      config: { mode: 'replace', batch_size: 5000 },
+    },
+  ],
+
+  FilterRows: [
+    {
+      name: 'filter_equals',
+      label: 'Equals filter',
+      description: 'Filter by exact value match',
+      config: { condition: '{"field": "status", "op": "==", "value": "active"}' },
+    },
+    {
+      name: 'filter_range',
+      label: 'Range filter',
+      description: 'Filter by numeric range',
+      config: { condition: '{"field": "age", "op": ">=", "value": 18}' },
+    },
+  ],
+
+  JoinTwoInputs: [
+    {
+      name: 'join_inner',
+      label: 'Inner join',
+      description: 'Only matching rows',
+      config: { join_type: 'inner' },
+    },
+    {
+      name: 'join_left',
+      label: 'Left join',
+      description: 'All left rows + matches',
+      config: { join_type: 'left' },
+    },
   ],
 }

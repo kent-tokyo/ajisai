@@ -190,3 +190,28 @@
   border-color: var(--danger);
   background-color: rgba(244, 135, 113, 0.05);
 }
+
+.form-templates-dropdown {
+  display: flex;
+  gap: 4px;
+}
+
+.form-template-select {
+  background-color: var(--bg-editor);
+  color: var(--text);
+  border: 1px solid var(--accent);
+  padding: 4px 8px;
+  border-radius: 2px;
+  font-size: 11px;
+  cursor: pointer;
+  min-width: 150px;
+}
+
+.form-template-select:hover {
+  background-color: var(--bg-input);
+}
+
+.form-template-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 1px var(--accent);
+}

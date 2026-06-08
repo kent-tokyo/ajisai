@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FORM_DESCRIPTORS, type FormField } from '../config/formDescriptors'
+import { FORM_DESCRIPTORS, FORM_TEMPLATES, type FormField } from '../config/formDescriptors'
 import type { Node as PipelineNode } from '../types/pipeline'
 import './ConfigForm.css'
 
@@ -15,12 +15,20 @@ export function ConfigForm({ node, onConfigChange }: ConfigFormProps) {
   const [error, setError] = useState<string>('')
 
   const fields = node ? FORM_DESCRIPTORS[node.type_name] : null
+  const templates = node ? FORM_TEMPLATES[node.type_name] : null
 
   const handleFieldChange = (key: string, value: unknown) => {
     if (!node) return
     const newConfig = { ...node.config, [key]: value }
     onConfigChange(node.id, newConfig)
     // Also update JSON text for display
+    setJsonText(JSON.stringify(newConfig, null, 2))
+  }
+
+  const applyTemplate = (templateConfig: Record<string, unknown>) => {
+    if (!node) return
+    const newConfig = { ...node.config, ...templateConfig }
+    onConfigChange(node.id, newConfig)
     setJsonText(JSON.stringify(newConfig, null, 2))
   }
 
@@ -50,8 +58,34 @@ export function ConfigForm({ node, onConfigChange }: ConfigFormProps) {
   return (
     <div className="config-form">
       <div className="form-header">
-        <h4>{node.label}</h4>
-        <span className="form-type">{node.type_name}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h4>{node.label}</h4>
+            <span className="form-type">{node.type_name}</span>
+          </div>
+          {templates && templates.length > 0 && (
+            <div className="form-templates-dropdown">
+              <select
+                className="form-template-select"
+                defaultValue=""
+                onChange={(e) => {
+                  if (e.target.value) {
+                    const template = templates.find((t) => t.name === e.target.value)
+                    if (template) applyTemplate(template.config)
+                    e.target.value = ''
+                  }
+                }}
+              >
+                <option value="">Templates</option>
+                {templates.map((t) => (
+                  <option key={t.name} value={t.name}>
+                    {t.label} — {t.description}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="form-body">
@@ -84,6 +118,12 @@ interface FormRendererProps {
   onChange: (key: string, value: unknown) => void
 }
 
+function shouldShowField(field: FormField, config: Record<string, unknown>): boolean {
+  if (!field.dependsOn) return true
+  const dependencyValue = config[field.dependsOn.field]
+  return dependencyValue === field.dependsOn.value
+}
+
 function FormRenderer({ fields, config, onChange }: FormRendererProps) {
   // Group fields by 'group' property
   const groups = fields.reduce((acc, field) => {
@@ -94,8 +134,11 @@ function FormRenderer({ fields, config, onChange }: FormRendererProps) {
   }, {} as Record<string, FormField[]>)
 
   // Render ungrouped fields first, then grouped fields
-  const ungroupedFields = groups['General'] || []
-  const groupedFields = Object.entries(groups).filter(([name]) => name !== 'General')
+  const ungroupedFields = (groups['General'] || []).filter(f => shouldShowField(f, config))
+  const groupedFields = Object.entries(groups)
+    .filter(([name]) => name !== 'General')
+    .map(([name, fields]) => [name, fields.filter(f => shouldShowField(f, config))] as const)
+    .filter(([, fields]) => fields.length > 0)
 
   return (
     <>
