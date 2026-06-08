@@ -73,9 +73,9 @@ English | [日本語](README_ja.md) | [中文](README_zh.md)
 
 - **Apache Hop compatible** — reads `.hpl` pipeline files directly
 - **Fast & memory-efficient** — native Rust binary; async execution via tokio, CPU parallelism via rayon
-- **CUI / GUI** — CLI tool and visual pipeline editor (egui)
+- **CUI / GUI** — CLI tool and visual pipeline editor (Electron + React, VS Code style)
 - **Cross-platform** — Windows / macOS / Linux
-- **Multilingual** — Japanese / English
+- **Multilingual** — Japanese / English (UI and CLI)
 
 ---
 
@@ -256,12 +256,26 @@ Pipeline files created with Apache Hop can be loaded directly.
 ```
 ajisai/
 ├── crates/
-│   ├── core/          Row / RowSchema / Value types, pipeline execution engine
-│   ├── transforms/    Built-in transform implementations
+│   ├── core/          Row / RowSchema / Value types, pipeline execution engine, model (Node/Edge)
+│   ├── transforms/    Built-in transform implementations (50+ transforms)
 │   ├── hop-compat/    .hpl / .hwf / .ktr / .dtsx parser, Apache Hop compatibility layer
 │   ├── cli/           ajisai-cli binary
-│   └── gui/           egui visual pipeline editor
+│   └── server/        JSON-RPC server for Electron GUI (stdin/stdout IPC)
+├── electron/          Electron + React GUI (VS Code style, Phase 6B)
 └── tests/fixtures/    Sample pipelines and test data
+```
+
+### Electron GUI Architecture
+
+```
+Electron main process
+  ├─ Sidecar (ajisai-server stdin/stdout JSON-RPC)
+  └─ IPC handlers (loadPipeline, savePipeline, runPipeline, etc.)
+
+Electron renderer (React + TypeScript)
+  ├─ Components (Canvas, Sidebar, PropertiesPanel, LogPanel)
+  ├─ Zustand store (PipelineState, nodeStatuses, logLines)
+  └─ contextBridge API (window.ajisai)
 ```
 
 ### Execution Model
@@ -280,14 +294,48 @@ ajisai/
 
 ## Roadmap
 
+### Completed Phases
+
 | Phase | Scope | Status |
 |---|---|---|
-| Phase 1 | CLI + core transforms + .hpl compatibility | Done |
-| Phase 2 | JSON / Calculator / Join / Lookup / DB / .hwf workflow | Done |
-| Phase 3 | GUI — egui visual pipeline editor | Done |
-| Phase 4 | Multilingual UI, packaging, release CI | Done |
-| Phase 5 | 50 transforms: scripting (Rhai), sub-pipeline, file ops | Done |
-| Phase 6A | Window functions (AnalyticQuery), JSON field transforms, workflow actions | Done |
+| Phase 1 | CLI + core transforms + .hpl compatibility | ✅ Done |
+| Phase 2 | JSON / Calculator / Join / Lookup / DB / .hwf workflow | ✅ Done |
+| Phase 3 | GUI — egui visual pipeline editor (archived, replaced by Electron) | ✅ Done |
+| Phase 4 | Multilingual UI, packaging, release CI | ✅ Done |
+| Phase 5 | 50 transforms: scripting (Rhai), sub-pipeline, file ops | ✅ Done |
+| Phase 6A | Window functions (AnalyticQuery), JSON field transforms | ✅ Done |
+
+### Completed: Phase 6B-6C (Electron GUI Migration + Polish)
+
+| Subphase | Scope | Status |
+|---|---|---|
+| 6B-0 | Extract shared types to ajisai-core | ✅ Done |
+| 6B-1 | JSON-RPC server (crates/server) | ✅ Done |
+| 6B-2 | Electron scaffold + Zustand store | ✅ Done |
+| 6B-3 | Canvas (@xyflow/react) + UI components | ✅ Done |
+| 6B-4 | File I/O + keyboard shortcuts + MenuBar | ✅ Done |
+| 6C-1 | Per-transform form definitions (50+ forms) | ✅ Done |
+| 6C-2 | Undo/Redo with zundo middleware | ✅ Done |
+| 6C-3 | Window state persistence (localStorage) | ✅ Done |
+| 6C-4 | Performance optimization (React.memo, useMemo) | ✅ Done |
+| 6C-5 | Release preparation (electron-builder, auto-update) | ✅ Done |
+
+### Completed: Phase 6D (egui GUI Deprecation)
+
+- ✅ Removed `crates/gui` from workspace members (Cargo.toml)
+- ✅ Updated README to reflect Electron GUI as primary
+- Archive note: Legacy egui implementation available in git history for reference
+
+### Current: Phase 7 (Enhanced Form Builder)
+
+| Subphase | Scope | Priority | Status |
+|---|---|---|---|
+| 7-1 | Custom transform schema generator | HIGH | 🔄 In Progress |
+| 7-2 | Per-field validation rules | HIGH | 📋 Planned |
+| 7-3 | Form templates library | MEDIUM | 📋 Planned |
+| 7-4 | Field grouping + example hints | MEDIUM | 📋 Planned |
+
+### Future: Phase 8 (Advanced Analytics)
 
 ---
 

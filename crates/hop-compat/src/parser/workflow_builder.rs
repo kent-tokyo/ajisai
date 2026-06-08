@@ -259,7 +259,7 @@ impl Action for SetVariablesAction {
         for (k, v) in &self.variables {
             let resolved = ctx.resolve(v);
             // Set as OS environment variable so subsequent actions/pipelines see it
-            std::env::set_var(k, &resolved);
+            unsafe { std::env::set_var(k, &resolved); }
         }
         ActionResult::ok()
     }

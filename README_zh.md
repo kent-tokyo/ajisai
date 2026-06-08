@@ -73,9 +73,9 @@
 
 - **兼容 Apache Hop** — 可直接读取 `.hpl` 管道文件
 - **高速低内存** — Rust 原生二进制；tokio 异步执行，rayon CPU 并行处理
-- **命令行 / 图形界面两用** — CLI 工具与可视化管道编辑器（egui）
+- **命令行 / 图形界面两用** — CLI 工具与 Electron + React 可视化管道编辑器（VS Code 风格）
 - **跨平台** — Windows / macOS / Linux
-- **多语言** — 日语 / 英语
+- **多语言** — 日语 / 英语（UI 和 CLI 均支持）
 
 ---
 
@@ -256,15 +256,17 @@ ajisai-cli run -p pipeline.hpl -e INPUT_DIR=/data -e OUTPUT_DIR=/output
 ```
 ajisai/
 ├── crates/
-│   ├── core/          Row / RowSchema / Value 类型定义，管道执行引擎
-│   ├── transforms/    内置 Transform 实现集合
+│   ├── core/          Row / RowSchema / Value 类型定义，管道执行引擎，模型 (Node/Edge)
+│   ├── transforms/    内置 Transform 实现集合（50+ transforms）
 │   ├── hop-compat/    .hpl / .hwf / .ktr / .dtsx 解析器，Apache Hop 兼容层
 │   ├── cli/           ajisai-cli 二进制
-│   └── gui/           egui 可视化管道编辑器
+│   ├── gui/           遗留 egui 可视化编辑器（正在替换）
+│   └── server/        Electron GUI 的 JSON-RPC 服务器（stdin/stdout IPC）
+├── electron/          Electron + React GUI（VS Code 风格，Phase 6B）
 └── tests/fixtures/    示例管道与测试数据
 ```
 
-### 执行模型
+### 执行模型（管道引擎）
 
 ```
 [CsvInput] ──mpsc──> [FilterRows] ──mpsc──> [SortRows] ──mpsc──> [CsvOutput]
@@ -276,18 +278,56 @@ ajisai/
 - I/O 密集型：tokio async/await
 - CPU 密集型（排序等）：rayon 并行
 
+### Electron GUI 架构
+
+```
+Electron 主进程
+  ├─ 边车进程（ajisai-server stdin/stdout JSON-RPC）
+  └─ IPC 处理程序（loadPipeline、savePipeline、runPipeline 等）
+
+Electron 渲染器（React + TypeScript）
+  ├─ 组件（Canvas、Sidebar、PropertiesPanel、LogPanel）
+  ├─ Zustand 状态管理（PipelineState、nodeStatuses、logLines）
+  └─ contextBridge API（window.ajisai）
+```
+
 ---
 
 ## 开发路线图
 
+### 已完成阶段
+
 | 阶段 | 内容 | 状态 |
 |---|---|---|
-| 阶段 1 | CLI + 基础 Transform + .hpl 兼容 | 完成 |
-| 阶段 2 | JSON / Calculator / Join / Lookup / DB / .hwf 工作流 | 完成 |
-| 阶段 3 | GUI — egui 可视化管道编辑器 | 完成 |
-| 阶段 4 | 多语言 UI、打包、发布 CI | 完成 |
-| 阶段 5 | 50 个 Transform：脚本（Rhai）、子管道、文件操作 | 完成 |
-| 阶段 6A | 窗口函数（AnalyticQuery）、JSON 字段 Transform、工作流动作扩展 | 完成 |
+| 阶段 1 | CLI + 基础 Transform + .hpl 兼容 | ✅ 完成 |
+| 阶段 2 | JSON / Calculator / Join / Lookup / DB / .hwf 工作流 | ✅ 完成 |
+| 阶段 3 | GUI — egui 可视化管道编辑器 | ✅ 完成 |
+| 阶段 4 | 多语言 UI、打包、发布 CI | ✅ 完成 |
+| 阶段 5 | 50 个 Transform：脚本、子管道、文件操作 | ✅ 完成 |
+| 阶段 6A | 窗口函数、JSON 字段 Transform | ✅ 完成 |
+
+### 当前：第 6B 阶段 (Electron GUI 迁移)
+
+| 子阶段 | 内容 | 状态 |
+|---|---|---|
+| 6B-0 | 提取共享类型到 ajisai-core | ✅ 完成 |
+| 6B-1 | JSON-RPC 服务器（crates/server） | ✅ 完成 |
+| 6B-2 | Electron 脚手架 + Zustand 存储 | ✅ 完成 |
+| 6B-3 | Canvas（@xyflow/react）+ UI 组件 | ✅ 完成 |
+| 6B-4 | 文件 I/O + 键盘快捷键 + MenuBar | ✅ 完成 |
+
+### 计划：第 6C 阶段 (打磨与优化)
+
+| 子阶段 | 内容 | 优先级 | 工期 |
+|---|---|---|---|
+| 6C-1 | Transform 对应表单定义（50+ 种） | 高 | 2-3 天 |
+| 6C-2 | 撤销/重做 (zundo 中间件) | 高 | 1 天 |
+| 6C-3 | 窗口状态持久化 (localStorage) | 中 | 1 天 |
+| 6C-4 | 性能优化 (React.memo、包大小) | 中 | 1-2 天 |
+| 6C-5 | 发布准备 (代码签名、自动更新) | 低 | 2-3 天 |
+
+### 未来：第 6D 阶段 (egui 淘汰)
+- Electron GUI 达到功能完全对等后，将 `crates/gui` 存档
 
 ---
 

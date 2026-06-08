@@ -1,0 +1,74 @@
+.log-panel {
+  height: 160px;
+  background-color: var(--bg-panel);
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.log-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.log-header h4 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.log-clear-btn {
+  font-size: 11px;
+  padding: 4px 8px;
+  background-color: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.log-clear-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.log-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  background-color: var(--bg-editor);
+}
+
+.log-empty {
+  padding: 12px;
+  text-align: center;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.log-lines {
+  padding: 8px;
+}
+
+.log-line {
+  margin-bottom: 2px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.log-text {
+  color: var(--text-dim);
+  display: inline-block;
+  width: 100%;
+}

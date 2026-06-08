@@ -73,9 +73,9 @@ Apache Hop 互換の超軽量・爆速 ETL エンジン。Rust で再構築。
 
 - **Apache Hop 互換** — `.hpl` パイプラインファイルを直接読み込める
 - **高速・省メモリ** — Rust ネイティブバイナリ。tokio による非同期実行、rayon による CPU 並列処理
-- **CUI / GUI 両対応** — CLI ツールとビジュアルパイプラインエディタ
+- **CUI / GUI 両対応** — CLI ツールと Electron + React のビジュアルパイプラインエディタ (VS Code スタイル)
 - **クロスプラットフォーム** — Windows / macOS / Linux
-- **多言語対応** — 日本語 / English
+- **多言語対応** — 日本語 / English (UI・CLI 両対応)
 
 ---
 
@@ -256,15 +256,16 @@ Apache Hop で作成した `.hpl` ファイルをそのまま読み込むこと�
 ```
 ajisai/
 ├── crates/
-│   ├── core/          Row / RowSchema / Value 型定義、実行エンジン
-│   ├── transforms/    標準 Transform 実装群
+│   ├── core/          Row / RowSchema / Value 型定義、実行エンジン、モデル (Node/Edge)
+│   ├── transforms/    標準 Transform 実装群 (50+ transforms)
 │   ├── hop-compat/    .hpl / .hwf / .ktr / .dtsx パーサ、Apache Hop 互換レイヤー
 │   ├── cli/           ajisai-cli バイナリ
-│   └── gui/           egui ビジュアルエディタ
+│   └── server/        Electron GUI 用 JSON-RPC サーバー (stdin/stdout IPC)
+├── electron/          Electron + React GUI (VS Code スタイル, Phase 6B)
 └── tests/fixtures/    サンプルパイプライン・テストデータ
 ```
 
-### 実行モデル
+### 実行モデル（パイプラインエンジン）
 
 ```
 [CsvInput] ──mpsc──> [FilterRows] ──mpsc──> [SortRows] ──mpsc──> [CsvOutput]
@@ -276,18 +277,65 @@ ajisai/
 - I/O バウンド処理: tokio async/await
 - CPU バウンド処理 (Sort など): rayon 並列
 
+### Electron GUI アーキテクチャ
+
+```
+Electron メインプロセス
+  ├─ サイドカー (ajisai-server stdin/stdout JSON-RPC)
+  └─ IPC ハンドラー (loadPipeline, savePipeline, runPipeline など)
+
+Electron レンダラー (React + TypeScript)
+  ├─ コンポーネント (Canvas, Sidebar, PropertiesPanel, LogPanel)
+  ├─ Zustand ストア (PipelineState, nodeStatuses, logLines)
+  └─ contextBridge API (window.ajisai)
+```
+
 ---
 
 ## 開発状況
 
+### 完了フェーズ
+
 | フェーズ | 内容 | 状態 |
 |---|---|---|
-| Phase 1 | CLI + 基本 Transform + .hpl 互換 | 完成 |
-| Phase 2 | JSON / Calculator / Join / Lookup / DB / .hwf ワークフロー | 完成 |
-| Phase 3 | GUI — egui ビジュアルパイプラインエディタ | 完成 |
-| Phase 4 | 多言語 UI・パッケージング・リリース CI | 完成 |
-| Phase 5 | Transform 50種：スクリプト（Rhai）・サブパイプライン・ファイル操作 | 完成 |
-| Phase 6A | ウィンドウ関数（AnalyticQuery）・JSON フィールド Transform・ワークフローアクション拡充 | 完成 |
+| Phase 1 | CLI + 基本 Transform + .hpl 互換 | ✅ 完成 |
+| Phase 2 | JSON / Calculator / Join / Lookup / DB / .hwf ワークフロー | ✅ 完成 |
+| Phase 3 | GUI — egui ビジュアルパイプラインエディタ (アーカイブ、Electron に置き換え) | ✅ 完成 |
+| Phase 4 | 多言語 UI・パッケージング・リリース CI | ✅ 完成 |
+| Phase 5 | Transform 50種：スクリプト・サブパイプライン・ファイル操作 | ✅ 完成 |
+| Phase 6A | ウィンドウ関数・JSON フィールド Transform | ✅ 完成 |
+
+### 完了：Phase 6B-6C (Electron GUI 移行 + ポーランド)
+
+| サブフェーズ | 内容 | 状態 |
+|---|---|---|
+| 6B-0 | 共有型抽出 (ajisai-core へ移動) | ✅ 完成 |
+| 6B-1 | JSON-RPC サーバー (crates/server) | ✅ 完成 |
+| 6B-2 | Electron スケルトン + Zustand ストア | ✅ 完成 |
+| 6B-3 | Canvas (@xyflow/react) + UI コンポーネント | ✅ 完成 |
+| 6B-4 | ファイル I/O + キーボード操作 + MenuBar | ✅ 完成 |
+| 6C-1 | Transform ごとのフォーム定義（50+ 種） | ✅ 完成 |
+| 6C-2 | Undo/Redo (zundo ミドルウェア) | ✅ 完成 |
+| 6C-3 | ウィンドウ状態の永続化 (localStorage) | ✅ 完成 |
+| 6C-4 | パフォーマンス最適化 (React.memo, useMemo) | ✅ 完成 |
+| 6C-5 | リリース準備（electron-builder、自動更新） | ✅ 完成 |
+
+### 完了：Phase 6D (egui GUI 廃止)
+
+- ✅ Cargo.toml から `crates/gui` を除去
+- ✅ README を Electron GUI プライマリに更新
+- アーカイブ注記: レガシー egui 実装は Git 履歴で参照可能
+
+### 現在：Phase 7 (フォームビルダー拡張)
+
+| サブフェーズ | 内容 | 優先度 | 状態 |
+|---|---|---|---|
+| 7-1 | カスタム Transform スキーマジェネレータ | 高 | 🔄 進行中 |
+| 7-2 | フィールド別検証ルール | 高 | 📋 計画中 |
+| 7-3 | フォームテンプレートライブラリ | 中 | 📋 計画中 |
+| 7-4 | フィールドグループ化 + 例示ヒント | 中 | 📋 計画中 |
+
+### 将来：Phase 8 (高度な分析)
 
 ---
 

@@ -812,7 +812,7 @@ impl AjisaiApp {
         }
         let mut queue: std::collections::VecDeque<&str> = in_degree
             .iter()
-            .filter(|(_, &d)| d == 0)
+            .filter(|&(_, &d)| d == 0)
             .map(|(&id, _)| id)
             .collect();
         let mut processed = 0usize;

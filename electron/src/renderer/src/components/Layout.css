@@ -1,0 +1,64 @@
+.layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: var(--bg-editor);
+}
+
+.activity-bar {
+  width: 48px;
+  background-color: var(--bg-actbar);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  flex-shrink: 0;
+}
+
+.activity-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 20px;
+  transition: background-color 0.2s;
+}
+
+.activity-icon:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.main-content {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 240px 1fr 280px;
+  gap: 0;
+  overflow: hidden;
+}
+
+.properties-panel {
+  grid-column: 3;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+@media (max-width: 1200px) {
+  .main-content {
+    grid-template-columns: 200px 1fr 240px;
+  }
+}
+
+@media (max-width: 800px) {
+  .main-content {
+    grid-template-columns: 160px 1fr;
+  }
+
+  .properties-panel {
+    display: none;
+  }
+}

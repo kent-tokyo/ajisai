@@ -1,0 +1,19 @@
+[package]
+name = "ajisai-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "ajisai-server"
+path = "src/main.rs"
+
+[dependencies]
+ajisai-core = { workspace = true }
+ajisai-transforms = { workspace = true }
+ajisai-hop-compat = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

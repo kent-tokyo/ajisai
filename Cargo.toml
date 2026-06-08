@@ -4,13 +4,14 @@ members = [
     "crates/transforms",
     "crates/hop-compat",
     "crates/cli",
-    "crates/gui",
+    "crates/server",
 ]
+# NOTE: crates/gui (egui GUI) archived in 0.1.0 — replaced by Electron GUI (electron/)
 resolver = "2"
 
 [workspace.package]
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]

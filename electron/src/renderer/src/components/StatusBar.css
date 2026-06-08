@@ -1,0 +1,55 @@
+.status-bar {
+  height: 24px;
+  background-color: var(--bg-panel);
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 11px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  gap: 16px;
+}
+
+.status-left,
+.status-center,
+.status-right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.status-center {
+  flex: 1;
+  justify-content: center;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.status-running {
+  color: var(--warning);
+  animation: pulse-status 1s infinite;
+}
+
+@keyframes pulse-status {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.status-done {
+  color: var(--success);
+}
+
+.status-error {
+  color: var(--danger);
+}

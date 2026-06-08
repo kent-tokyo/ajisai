@@ -1,0 +1,78 @@
+.transform-node {
+  background-color: var(--bg-panel);
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  padding: 0;
+  min-width: 140px;
+  font-size: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  transition: border-color 0.2s;
+}
+
+.transform-node.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.3);
+}
+
+.node-header {
+  background-color: var(--bg-sidebar);
+  border-top-width: 3px;
+  border-top-style: solid;
+  padding: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 2px 2px 0 0;
+}
+
+.node-title {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.node-type {
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.status-dot.running {
+  animation: pulse 1s infinite;
+}
+
+.node-body {
+  padding: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.node-label {
+  color: var(--text-dim);
+  font-size: 11px;
+  word-break: break-word;
+  display: block;
+  max-height: 40px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
