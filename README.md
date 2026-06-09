@@ -320,22 +320,47 @@ Electron renderer (React + TypeScript)
 | 6C-4 | Performance optimization (React.memo, useMemo) | ✅ Done |
 | 6C-5 | Release preparation (electron-builder, auto-update) | ✅ Done |
 
-### Completed: Phase 6D (egui GUI Deprecation)
+### Completed: Phase 6D (egui GUI Deprecation) ✅ DONE
 
-- ✅ Removed `crates/gui` from workspace members (Cargo.toml)
-- ✅ Updated README to reflect Electron GUI as primary
-- Archive note: Legacy egui implementation available in git history for reference
+- ✅ Deleted `crates/gui` directory (egui implementation)
+- ✅ Created archive branch: `archive/egui-gui-0.1.0`
+- ✅ Full egui code history preserved in archive branch
+- ✅ Electron + React GUI is now the primary UI standard
+- **Access legacy code**: `git checkout archive/egui-gui-0.1.0`
 
-### Current: Phase 7 (Enhanced Form Builder)
+### Current: Phase 7 (Enhanced Form Builder) 📋 PLANNED
 
-| Subphase | Scope | Priority | Status |
-|---|---|---|---|
-| 7-1 | Custom transform schema generator | HIGH | 🔄 In Progress |
-| 7-2 | Per-field validation rules | HIGH | 📋 Planned |
-| 7-3 | Form templates library | MEDIUM | 📋 Planned |
-| 7-4 | Field grouping + example hints | MEDIUM | 📋 Planned |
+After 0.3.0 release (see [Roadmap](#roadmap) below)
 
-### Future: Phase 8 (Advanced Analytics)
+### Future: Phase 8 (Advanced Analytics) 📋 PLANNED
+
+---
+
+## Roadmap
+
+### Release 0.3.0 (Current) 🔄 IN PROGRESS
+
+Focus: **UI Polish + Performance Optimization**
+
+| Component | Status |
+|---|---|
+| Phase 9: UI Polish (9-1 to 9-4) | ✅ Complete |
+| Phase 6C: GUI Polish & Optimization (6C-1 to 6C-5) | ✅ Complete |
+| Phase 6D: egui GUI Deprecation | ✅ Complete |
+
+**Next**: Release v0.3.0 with `git tag v0.3.0`
+
+### Release 0.4.0 🔄 PLANNED
+
+Focus: **Advanced Data Handling + Profiling**
+
+- Advanced data preview panel
+- Column-level data profiling
+- Real-time pipeline monitoring dashboard
+- Custom transform creation UI
+- Plugin system foundations
+
+**Timeline**: Q3 2026
 
 ---
 
