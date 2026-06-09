@@ -62,3 +62,45 @@
     display: none;
   }
 }
+
+.bottom-tabs-header {
+  display: flex;
+  gap: 0;
+  background-color: var(--bg-panel);
+  border-top: 1px solid var(--border);
+  padding: 0;
+  flex-shrink: 0;
+  height: 32px;
+  margin-left: 48px;
+}
+
+.tab-button {
+  padding: 6px 12px;
+  background-color: transparent;
+  color: var(--text-dim);
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.tab-button:hover {
+  color: var(--text);
+  background-color: rgba(0, 122, 204, 0.05);
+}
+
+.tab-button.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.bottom-panel {
+  flex-shrink: 0;
+  height: 160px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  margin-left: 48px;
+}

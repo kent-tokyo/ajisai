@@ -6,7 +6,17 @@ import type { PipelineState } from './types/pipeline'
 import './App.css'
 
 export default function App() {
-  const { pipeline, setCategories, setPipeline, isRunning, setRunning, appendLog } = usePipelineStore()
+  const {
+    pipeline,
+    setCategories,
+    setPipeline,
+    isRunning,
+    setRunning,
+    appendLog,
+    recordNodeMetrics,
+    resetMetrics,
+    finalizeMetrics,
+  } = usePipelineStore()
 
   useEffect(() => {
     const init = async () => {
@@ -36,6 +46,13 @@ export default function App() {
     // Subscribe to progress notifications
     const unsubProgress = window.ajisai.onPipelineProgress?.((params) => {
       appendLog(`[${params.status}] ${params.node_id}`)
+      // Record node metrics for dashboard
+      recordNodeMetrics(params.node_id, {
+        elapsed_ms: 0,
+        rows_in: params.rows_in,
+        rows_out: params.rows_out,
+        throughput: params.rows_out > 0 ? params.rows_out / Math.max(1, (params.elapsed_ms || 1) / 1000) : 0,
+      })
     })
 
     const unsubLog = window.ajisai.onPipelineLog?.((params) => {
@@ -93,6 +110,7 @@ export default function App() {
 
     try {
       setRunning(true)
+      resetMetrics()
       appendLog('▶ Starting pipeline execution...')
 
       const stats = await window.ajisai.runPipeline(pipeline)
@@ -101,6 +119,9 @@ export default function App() {
       appendLog(`  Elapsed: ${stats.elapsed_ms}ms`)
       appendLog(`  Rows read: ${stats.rows_read}`)
       appendLog(`  Rows written: ${stats.rows_written}`)
+
+      // Finalize metrics for dashboard display
+      finalizeMetrics()
 
       setRunning(false)
     } catch (err: any) {
