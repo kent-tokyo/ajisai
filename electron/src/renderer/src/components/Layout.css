@@ -98,9 +98,32 @@
 
 .bottom-panel {
   flex-shrink: 0;
-  height: 160px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  margin-left: 48px;
+}
+
+/* Resize Handles */
+.resize-handle {
+  background-color: transparent;
+  transition: background-color 0.2s;
+  z-index: 100;
+}
+
+.resize-handle:hover {
+  background-color: var(--accent);
+}
+
+.resize-handle-vertical {
+  width: 4px;
+  cursor: col-resize;
+  grid-column: span 1;
+}
+
+.resize-handle-horizontal {
+  height: 4px;
+  cursor: row-resize;
+  width: 100%;
   margin-left: 48px;
 }
