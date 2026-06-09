@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { FORM_DESCRIPTORS, FORM_TEMPLATES, type FormField } from '../config/formDescriptors'
+import { useFormHistory } from '../hooks/useFormHistory'
 import type { Node as PipelineNode } from '../types/pipeline'
 import './ConfigForm.css'
 
@@ -13,24 +14,42 @@ export function ConfigForm({ node, onConfigChange }: ConfigFormProps) {
     node ? JSON.stringify(node.config, null, 2) : '{}'
   )
   const [error, setError] = useState<string>('')
+  const [showHistory, setShowHistory] = useState(false)
+  const { addSnapshot, getHistoryFor } = useFormHistory()
+
+  // Update JSON text when node changes
+  useEffect(() => {
+    if (node) {
+      setJsonText(JSON.stringify(node.config, null, 2))
+      // Save to history when config is set
+      addSnapshot(node.type_name, node.config)
+    }
+  }, [node?.id])
 
   const fields = node ? FORM_DESCRIPTORS[node.type_name] : null
   const templates = node ? FORM_TEMPLATES[node.type_name] : null
+  const history = node ? getHistoryFor(node.type_name) : []
 
-  const handleFieldChange = (key: string, value: unknown) => {
-    if (!node) return
-    const newConfig = { ...node.config, [key]: value }
-    onConfigChange(node.id, newConfig)
-    // Also update JSON text for display
-    setJsonText(JSON.stringify(newConfig, null, 2))
-  }
+  const handleFieldChange = useCallback(
+    (key: string, value: unknown) => {
+      if (!node) return
+      const newConfig = { ...node.config, [key]: value }
+      onConfigChange(node.id, newConfig)
+      // Also update JSON text for display
+      setJsonText(JSON.stringify(newConfig, null, 2))
+    },
+    [node, onConfigChange]
+  )
 
-  const applyTemplate = (templateConfig: Record<string, unknown>) => {
-    if (!node) return
-    const newConfig = { ...node.config, ...templateConfig }
-    onConfigChange(node.id, newConfig)
-    setJsonText(JSON.stringify(newConfig, null, 2))
-  }
+  const applyTemplate = useCallback(
+    (templateConfig: Record<string, unknown>) => {
+      if (!node) return
+      const newConfig = { ...node.config, ...templateConfig }
+      onConfigChange(node.id, newConfig)
+      setJsonText(JSON.stringify(newConfig, null, 2))
+    },
+    [node, onConfigChange]
+  )
 
   const handleJsonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const text = e.target.value
@@ -58,13 +77,13 @@ export function ConfigForm({ node, onConfigChange }: ConfigFormProps) {
   return (
     <div className="config-form">
       <div className="form-header">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
           <div>
             <h4>{node.label}</h4>
             <span className="form-type">{node.type_name}</span>
           </div>
-          {templates && templates.length > 0 && (
-            <div className="form-templates-dropdown">
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {templates && templates.length > 0 && (
               <select
                 className="form-template-select"
                 defaultValue=""
@@ -75,16 +94,48 @@ export function ConfigForm({ node, onConfigChange }: ConfigFormProps) {
                     e.target.value = ''
                   }
                 }}
+                title="Quick templates"
               >
-                <option value="">Templates</option>
+                <option value="">Presets</option>
                 {templates.map((t) => (
                   <option key={t.name} value={t.name}>
-                    {t.label} — {t.description}
+                    {t.label}
                   </option>
                 ))}
               </select>
-            </div>
-          )}
+            )}
+            {history.length > 0 && (
+              <div style={{ position: 'relative' }}>
+                <button
+                  className="form-history-btn"
+                  onClick={() => setShowHistory(!showHistory)}
+                  title="Configuration history"
+                >
+                  ⏱ {history.length}
+                </button>
+                {showHistory && (
+                  <div className="form-history-dropdown">
+                    {history.slice(0, 10).map((snap) => (
+                      <button
+                        key={snap.id}
+                        className="form-history-item"
+                        onClick={() => {
+                          applyTemplate(snap.config)
+                          setShowHistory(false)
+                        }}
+                        title={new Date(snap.timestamp).toLocaleString()}
+                      >
+                        <span className="history-label">{snap.label}</span>
+                        <span className="history-time">
+                          {Math.round((Date.now() - snap.timestamp) / 1000)}s ago
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

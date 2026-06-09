@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { usePipelineStore } from './store/pipelineStore'
+import { useAutoSave } from './hooks/useAutoSave'
 import { MenuBar } from './components/MenuBar'
 import { Layout } from './components/Layout'
 import type { PipelineState } from './types/pipeline'
@@ -16,20 +17,20 @@ export default function App() {
     recordNodeMetrics,
     resetMetrics,
     finalizeMetrics,
+    restoreFromLocalStorage,
+    markSaved,
   } = usePipelineStore()
+
+  // Enable auto-save functionality
+  useAutoSave()
 
   useEffect(() => {
     const init = async () => {
       try {
-        // Load saved pipeline from localStorage
-        const saved = localStorage.getItem('ajisai_pipeline')
-        if (saved) {
-          try {
-            const savedPipeline = JSON.parse(saved)
-            setPipeline(savedPipeline)
-          } catch (e) {
-            console.error('Failed to restore pipeline:', e)
-          }
+        // Try to restore pipeline from auto-save first
+        const restored = restoreFromLocalStorage()
+        if (restored) {
+          console.log('Restored pipeline from auto-save')
         }
 
         // Connect to server
@@ -85,6 +86,7 @@ export default function App() {
     try {
       const result = await window.ajisai.loadPipeline()
       setPipeline(result.pipeline)
+      markSaved()
       appendLog(`Loaded pipeline: ${result.pipeline.name}`)
     } catch (err: any) {
       appendLog(`Error loading pipeline: ${err.message}`)
@@ -94,6 +96,7 @@ export default function App() {
   const handleSave = async () => {
     try {
       await window.ajisai.savePipeline(pipeline)
+      markSaved()
       appendLog(`Saved pipeline: ${pipeline.name}`)
     } catch (err: any) {
       appendLog(`Error saving pipeline: ${err.message}`)

@@ -1,8 +1,9 @@
+import { memo, useMemo } from 'react'
 import { usePipelineStore } from '../store/pipelineStore'
 import { DataFlowChart } from './DataFlowChart'
 import './MetricsPanel.css'
 
-export function MetricsPanel() {
+function MetricsPanelComponent() {
   const { currentMetrics } = usePipelineStore()
 
   if (!currentMetrics) {
@@ -14,6 +15,12 @@ export function MetricsPanel() {
   }
 
   const metrics = currentMetrics
+
+  // Memoize sorted node metrics to avoid re-sorting on every render
+  const sortedNodeMetrics = useMemo(
+    () => [...metrics.node_metrics].sort((a, b) => b.elapsed_ms - a.elapsed_ms),
+    [metrics.node_metrics]
+  )
 
   return (
     <div className="metrics-panel">
@@ -55,9 +62,7 @@ export function MetricsPanel() {
               </tr>
             </thead>
             <tbody>
-              {metrics.node_metrics
-                .sort((a, b) => b.elapsed_ms - a.elapsed_ms)
-                .map((node) => (
+              {sortedNodeMetrics.map((node) => (
                   <tr key={node.node_id}>
                     <td className="metric-name">{node.node_label}</td>
                     <td className="metric-type">{node.type_name}</td>
@@ -74,9 +79,11 @@ export function MetricsPanel() {
 
       <div className="metrics-footer">
         <p className="metrics-hint">
-          💡 Data flow width represents row volume. Narrow flows may indicate data loss or filtering.
+          Data flow width represents row volume. Narrow flows may indicate data loss or filtering.
         </p>
       </div>
     </div>
   )
 }
+
+export const MetricsPanel = memo(MetricsPanelComponent)

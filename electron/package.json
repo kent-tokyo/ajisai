@@ -1,14 +1,14 @@
 {
   "name": "ajisai",
-  "version": "0.1.0",
-  "description": "Next-generation lightweight ETL platform",
+  "version": "0.3.0",
+  "description": "Next-generation lightweight ETL platform with complete metrics dashboard",
   "main": "./out/main/index.js",
   "author": "Kentaro Tanabe",
   "license": "MIT OR Apache-2.0",
-  "homepage": "https://github.com/k-nasa/ajisai",
+  "homepage": "https://github.com/kent-tokyo/ajisai",
   "repository": {
     "type": "git",
-    "url": "https://github.com/k-nasa/ajisai.git"
+    "url": "https://github.com/kent-tokyo/ajisai.git"
   },
   "scripts": {
     "dev": "electron-vite",
@@ -36,7 +36,7 @@
     "vite": "^5.0.0"
   },
   "build": {
-    "appId": "com.example.ajisai",
+    "appId": "com.ajisai.app",
     "productName": "ajisai",
     "files": [
       "out/**/*",
@@ -49,11 +49,17 @@
     "mac": {
       "target": ["dmg", "zip"],
       "category": "public.app-category.developer-tools",
-      "sign": false,
-      "notarize": false
+      "sign": true,
+      "identity": "Developer ID Application",
+      "notarize": false,
+      "hardenedRuntime": true,
+      "entitlements": "./entitlements.mac.plist",
+      "entitlementsInherit": "./entitlements.mac.plist"
     },
     "win": {
       "target": ["nsis", "portable"],
+      "sign": "./customSign.js",
+      "signingHashAlgorithms": ["sha256"],
       "certificateFile": null,
       "certificatePassword": null
     },
@@ -63,12 +69,16 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ajisai"
     },
     "publish": {
       "provider": "github",
-      "owner": "k-nasa",
-      "repo": "ajisai"
+      "owner": "kent-tokyo",
+      "repo": "ajisai",
+      "releaseType": "release"
     }
   }
 }

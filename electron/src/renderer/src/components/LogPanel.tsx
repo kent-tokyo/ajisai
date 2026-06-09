@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, memo } from 'react'
 import { usePipelineStore } from '../store/pipelineStore'
 import './LogPanel.css'
 
@@ -11,7 +11,7 @@ function parseLogLevel(line: string): LogLevel {
   return 'info'
 }
 
-export function LogPanel() {
+function LogPanelComponent() {
   const { logLines, clearLog } = usePipelineStore()
   const [searchText, setSearchText] = useState('')
   const [levelFilter, setLevelFilter] = useState<LogLevel>('all')
@@ -85,3 +85,5 @@ export function LogPanel() {
     </div>
   )
 }
+
+export const LogPanel = memo(LogPanelComponent)

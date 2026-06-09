@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { usePipelineStore } from '../store/pipelineStore'
+import { ChevronIcon } from './Icons'
 import type { TransformCategory } from '../types/pipeline'
 import './Sidebar.css'
 
@@ -38,7 +39,9 @@ export function Sidebar() {
                 className={`category-header ${collapsed.has(category.name) ? 'collapsed' : ''}`}
                 onClick={() => toggleCategory(category.name)}
               >
-                <span className="chevron">▶</span>
+                <span className="chevron">
+                  <ChevronIcon size={14} color="var(--text-dim)" />
+                </span>
                 <span className="category-name">{category.name}</span>
                 <span className="count">({category.transforms.length})</span>
               </button>

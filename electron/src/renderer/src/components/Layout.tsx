@@ -5,6 +5,7 @@ import { LogPanel } from './LogPanel'
 import { MetricsPanel } from './MetricsPanel'
 import { ConfigForm } from './ConfigForm'
 import { StatusBar } from './StatusBar'
+import { PipelineIcon } from './Icons'
 import { usePipelineStore } from '../store/pipelineStore'
 import './Layout.css'
 
@@ -70,7 +71,7 @@ export function Layout() {
       {/* Activity Bar */}
       <div className="activity-bar">
         <div className="activity-icon" title="Pipeline Editor">
-          📊
+          <PipelineIcon size={20} color="var(--accent)" />
         </div>
       </div>
 

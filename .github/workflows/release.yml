@@ -5,148 +5,43 @@ on:
     tags:
       - 'v*'
 
-permissions:
-  contents: write
-
 jobs:
   build:
-    name: Build ${{ matrix.artifact_name }}
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
       matrix:
-        include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            artifact_name: ajisai-linux-x86_64
-
-          - os: macos-13
-            target: x86_64-apple-darwin
-            artifact_name: ajisai-macos-x86_64
-
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            artifact_name: ajisai-macos-arm64
-
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            artifact_name: ajisai-windows-x86_64
-
+        os: [macos-latest, windows-latest, ubuntu-latest]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
 
-      - name: Cache Cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Build Rust server
+        run: cargo build --release --bin ajisai-server
 
-      - name: Install Linux system dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y \
-            libssl-dev pkg-config \
-            libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
-            libxkbcommon-dev libgtk-3-dev
+      - name: Install Electron dependencies
+        working-directory: electron
+        run: npm ci
 
-      - name: Build CLI
-        run: cargo build --release --bin ajisai-cli --target ${{ matrix.target }}
-
-      - name: Build GUI
-        run: cargo build --release --bin ajisai-gui --target ${{ matrix.target }}
-        continue-on-error: true
-
-      # ── macOS ────────────────────────────────────────────────────────────
-      - name: Create macOS .app bundle
-        if: runner.os == 'macOS'
-        run: |
-          mkdir -p dist
-          GUI="target/${{ matrix.target }}/release/ajisai-gui"
-          if [ -f "$GUI" ]; then
-            APP="dist/Ajisai.app/Contents"
-            mkdir -p "$APP/MacOS" "$APP/Resources"
-            cp "$GUI" "$APP/MacOS/ajisai-gui"
-            cat > "$APP/Info.plist" << 'PLIST'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-            "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0"><dict>
-            <key>CFBundleName</key>            <string>Ajisai</string>
-            <key>CFBundleDisplayName</key>     <string>Ajisai ETL</string>
-            <key>CFBundleIdentifier</key>      <string>com.kent-tokyo.ajisai</string>
-            <key>CFBundleVersion</key>         <string>1.0</string>
-            <key>CFBundleShortVersionString</key><string>1.0</string>
-            <key>CFBundleExecutable</key>      <string>ajisai-gui</string>
-            <key>CFBundlePackageType</key>     <string>APPL</string>
-            <key>NSHighResolutionCapable</key> <true/>
-          </dict></plist>
-          PLIST
-          fi
-
-      - name: Create macOS .dmg
-        if: runner.os == 'macOS'
-        run: |
-          if [ -d "dist/Ajisai.app" ]; then
-            # Build a DMG with a drag-to-Applications layout using only built-in hdiutil
-            mkdir -p dist_dmg
-            cp -r dist/Ajisai.app dist_dmg/
-            ln -s /Applications dist_dmg/Applications
-            hdiutil create \
-              -volname "Ajisai" \
-              -srcfolder dist_dmg \
-              -ov -format UDZO \
-              "dist/${{ matrix.artifact_name }}.dmg"
-            rm -rf dist_dmg
-          fi
-
-      - name: Package macOS CLI as tar.gz
-        if: runner.os == 'macOS'
-        run: |
-          cp target/${{ matrix.target }}/release/ajisai-cli dist/
-          tar -czf dist/${{ matrix.artifact_name }}-cli.tar.gz \
-            -C dist ajisai-cli
-
-      # ── Windows ──────────────────────────────────────────────────────────
-      - name: Create Windows portable zip
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Copy-Item "target\${{ matrix.target }}\release\ajisai-cli.exe" dist\
-          $guiExe = "target\${{ matrix.target }}\release\ajisai-gui.exe"
-          if (Test-Path $guiExe) {
-            Copy-Item $guiExe dist\
-          }
-          Compress-Archive -Path dist\* `
-            -DestinationPath "dist\${{ matrix.artifact_name }}-portable.zip"
-
-      # ── Linux ─────────────────────────────────────────────────────────────
-      - name: Package Linux binaries as tar.gz
-        if: runner.os == 'Linux'
-        run: |
-          mkdir -p dist
-          cp target/${{ matrix.target }}/release/ajisai-cli dist/
-          cp target/${{ matrix.target }}/release/ajisai-gui dist/ 2>/dev/null || true
-          tar -czf dist/${{ matrix.artifact_name }}.tar.gz -C dist \
-            $(ls dist/ | grep -v '\.tar\.gz')
+      - name: Build Electron app
+        working-directory: electron
+        run: npm run build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
-          path: dist/
+          name: ajisai-${{ matrix.os }}
+          path: electron/dist/*
 
-  release:
-    name: Create GitHub Release
+  create-release:
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -155,14 +50,13 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
+          path: release-artifacts
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
         with:
-          files: |
-            artifacts/**/*.tar.gz
-            artifacts/**/*.dmg
-            artifacts/**/*.zip
-          generate_release_notes: true
+          files: release-artifacts/**/*
           draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

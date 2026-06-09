@@ -11,6 +11,8 @@
   --success: #6a9955;
   --info: #4ec9b0;
   --warning: #dcdcaa;
+  --status-done: #6a9955;
+  --status-idle: #858585;
 }
 
 * {

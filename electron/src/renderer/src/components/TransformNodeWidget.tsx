@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Handle, Position } from '@xyflow/react'
 import type { Node as PipelineNode } from '../types/pipeline'
 import './TransformNodeWidget.css'
@@ -18,7 +19,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Variables / Flow': '#C586C0',
 }
 
-export function TransformNodeWidget({ data, selected }: TransformNodeWidgetProps) {
+function TransformNodeWidgetComponent({ data, selected }: TransformNodeWidgetProps) {
   const getCategoryColor = (typeName: string): string => {
     // Simple heuristic to map transform type to category
     if (typeName.includes('Csv') || typeName.includes('Json') || typeName.includes('Excel') ||
@@ -72,3 +73,13 @@ export function TransformNodeWidget({ data, selected }: TransformNodeWidgetProps
     </div>
   )
 }
+
+export const TransformNodeWidget = memo(TransformNodeWidgetComponent, (prev, next) => {
+  // Custom comparison: only re-render if data or selected changed meaningfully
+  return (
+    prev.selected === next.selected &&
+    prev.data.node.id === next.data.node.id &&
+    prev.data.status === next.data.status &&
+    prev.data.displayName === next.data.displayName
+  )
+})

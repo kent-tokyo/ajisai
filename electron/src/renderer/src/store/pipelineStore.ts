@@ -17,6 +17,10 @@ interface PipelineStore {
   undoStack: PipelineState[]
   redoStack: PipelineState[]
 
+  // State persistence
+  isDirty: boolean
+  lastSavedAt: number | null
+
   setPipeline: (pipeline: PipelineState) => void
   setName: (name: string) => void
   addNode: (typeName: string, pos: [number, number]) => void
@@ -47,6 +51,12 @@ interface PipelineStore {
   redo: () => void
   canUndo: () => boolean
   canRedo: () => boolean
+
+  // State persistence
+  markSaved: () => void
+  markDirty: () => void
+  autoSaveToLocalStorage: () => void
+  restoreFromLocalStorage: () => void
 }
 
 const MAX_UNDO_STACK = 50
@@ -55,7 +65,11 @@ const pushUndoStack = (state: PipelineStore, newPipeline: PipelineState) => ({
   pipeline: newPipeline,
   undoStack: [state.pipeline, ...state.undoStack].slice(0, MAX_UNDO_STACK),
   redoStack: [],
+  isDirty: true,
 })
+
+const AUTOSAVE_KEY = 'ajisai_autosave_pipeline'
+const AUTOSAVE_TIME_KEY = 'ajisai_autosave_time'
 
 export const usePipelineStore = create<PipelineStore>((set, get) => ({
   pipeline: { name: 'Untitled Pipeline', nodes: [], edges: [] },
@@ -68,6 +82,8 @@ export const usePipelineStore = create<PipelineStore>((set, get) => ({
   nodeMetricsMap: {},
   undoStack: [],
   redoStack: [],
+  isDirty: false,
+  lastSavedAt: null,
 
   setPipeline: (newPipeline) => set({
     pipeline: newPipeline,
@@ -247,4 +263,44 @@ export const usePipelineStore = create<PipelineStore>((set, get) => ({
 
   canUndo: () => get().undoStack.length > 0,
   canRedo: () => get().redoStack.length > 0,
+
+  markSaved: () => set({
+    isDirty: false,
+    lastSavedAt: Date.now(),
+  }),
+
+  markDirty: () => set({ isDirty: true }),
+
+  autoSaveToLocalStorage: () => {
+    const state = get()
+    const data = {
+      pipeline: state.pipeline,
+      timestamp: Date.now(),
+    }
+    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(data))
+    localStorage.setItem(AUTOSAVE_TIME_KEY, String(Date.now()))
+  },
+
+  restoreFromLocalStorage: () => {
+    const stored = localStorage.getItem(AUTOSAVE_KEY)
+    if (stored) {
+      try {
+        const data = JSON.parse(stored)
+        set({
+          pipeline: data.pipeline,
+          selectedNodeId: null,
+          nodeStatuses: {},
+          undoStack: [],
+          redoStack: [],
+          isDirty: false,
+          lastSavedAt: data.timestamp,
+        })
+        return true
+      } catch (err) {
+        console.error('Failed to restore pipeline:', err)
+        return false
+      }
+    }
+    return false
+  },
 }))

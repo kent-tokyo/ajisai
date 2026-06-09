@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { usePipelineStore } from '../store/pipelineStore'
+import { PlayIcon, RefreshIcon } from './Icons'
 import './MenuBar.css'
 
 interface MenuBarProps {
@@ -11,8 +12,9 @@ interface MenuBarProps {
 }
 
 export function MenuBar({ onRun, onSave, onOpen, onNew, isRunning }: MenuBarProps) {
-  const { pipeline, clearLog, undo, redo, canUndo, canRedo } = usePipelineStore()
+  const { pipeline, clearLog, undo, redo, canUndo, canRedo, isDirty } = usePipelineStore()
   const [showFileMenu, setShowFileMenu] = useState(false)
+  const [showEditMenu, setShowEditMenu] = useState(false)
   const [showPipelineMenu, setShowPipelineMenu] = useState(false)
 
   useEffect(() => {
@@ -84,6 +86,33 @@ export function MenuBar({ onRun, onSave, onOpen, onNew, isRunning }: MenuBarProp
       <div className="menu-item">
         <button
           className="menu-label"
+          onClick={() => setShowEditMenu(!showEditMenu)}
+        >
+          Edit
+        </button>
+        {showEditMenu && (
+          <div className="menu-dropdown">
+            <button
+              onClick={() => { undo(); setShowEditMenu(false); }}
+              className="menu-option"
+              disabled={!canUndo()}
+            >
+              Undo <span className="shortcut">Ctrl+Z</span>
+            </button>
+            <button
+              onClick={() => { redo(); setShowEditMenu(false); }}
+              className="menu-option"
+              disabled={!canRedo()}
+            >
+              Redo <span className="shortcut">Ctrl+Y</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="menu-item">
+        <button
+          className="menu-label"
           onClick={() => setShowPipelineMenu(!showPipelineMenu)}
         >
           Pipeline
@@ -112,13 +141,20 @@ export function MenuBar({ onRun, onSave, onOpen, onNew, isRunning }: MenuBarProp
 
       <div style={{ flex: 1 }} />
 
+      {isDirty && (
+        <span style={{ fontSize: '11px', color: 'var(--warning)', marginRight: '12px' }}>
+          ● Unsaved changes
+        </span>
+      )}
+
       <div className="menu-item">
         <button
           className={`menu-run-btn ${isRunning ? 'running' : ''}`}
           onClick={onRun}
           disabled={isRunning}
         >
-          {isRunning ? '⟳ Running...' : '▶ Run Pipeline'}
+          {isRunning ? <RefreshIcon size={14} color="var(--accent)" /> : <PlayIcon size={14} color="var(--accent)" />}
+          {isRunning ? 'Running...' : 'Run Pipeline'}
         </button>
       </div>
     </menu>
