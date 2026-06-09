@@ -1,4 +1,5 @@
 import { usePipelineStore } from '../store/pipelineStore'
+import { DataFlowChart } from './DataFlowChart'
 import './MetricsPanel.css'
 
 export function MetricsPanel() {
@@ -36,6 +37,9 @@ export function MetricsPanel() {
         </div>
       </div>
 
+      {/* Data Flow Diagram */}
+      <DataFlowChart />
+
       {metrics.node_metrics.length > 0 && (
         <div className="metrics-table">
           <h5>Transform Performance</h5>
@@ -70,7 +74,7 @@ export function MetricsPanel() {
 
       <div className="metrics-footer">
         <p className="metrics-hint">
-          💡 Sort by slowest transform to find bottlenecks
+          💡 Data flow width represents row volume. Narrow flows may indicate data loss or filtering.
         </p>
       </div>
     </div>

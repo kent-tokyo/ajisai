@@ -1,0 +1,83 @@
+.dataflow-chart {
+  padding: 12px 16px;
+  overflow-y: auto;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.dataflow-empty {
+  padding: 24px 12px;
+  text-align: center;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.dataflow-header {
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dataflow-header h5 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dataflow-svg {
+  width: 100%;
+  height: auto;
+  min-height: 200px;
+  max-height: 250px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background-color: var(--bg-input);
+  margin-bottom: 12px;
+}
+
+.dataflow-node-label {
+  font-size: 11px;
+  font-weight: 500;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  fill: var(--text);
+}
+
+.dataflow-node-rows {
+  font-size: 9px;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  fill: var(--text-dim);
+  font-family: 'Monaco', 'Menlo', monospace;
+}
+
+.dataflow-label {
+  font-size: 9px;
+  text-anchor: middle;
+  fill: var(--accent);
+  font-family: 'Monaco', 'Menlo', monospace;
+  pointer-events: none;
+}
+
+.dataflow-legend {
+  display: flex;
+  gap: 16px;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border: 2px solid;
+  border-radius: 2px;
+}
