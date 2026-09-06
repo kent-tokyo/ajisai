@@ -52,8 +52,7 @@
     "mac": {
       "target": ["dmg", "zip"],
       "category": "public.app-category.developer-tools",
-      "sign": true,
-      "identity": "Developer ID Application",
+      "sign": false,
       "notarize": false,
       "hardenedRuntime": true,
       "entitlements": "./entitlements.mac.plist",
@@ -61,7 +60,6 @@
     },
     "win": {
       "target": ["nsis", "portable"],
-      "sign": "./customSign.js",
       "signingHashAlgorithms": ["sha256"],
       "certificateFile": null,
       "certificatePassword": null
