@@ -43,7 +43,7 @@
       "node_modules/**/*"
     ],
     "directories": {
-      "out": "out",
+      "output": "dist",
       "buildResources": "assets"
     },
     "mac": {
