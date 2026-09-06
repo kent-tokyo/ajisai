@@ -1,9 +1,12 @@
 {
   "name": "ajisai",
-  "version": "0.3.0",
+  "version": "0.1.1",
   "description": "Next-generation lightweight ETL platform with complete metrics dashboard",
   "main": "./out/main/index.js",
-  "author": "Kentaro Tanabe",
+  "author": {
+    "name": "Kentaro Tanabe",
+    "email": "maintainers@ajisai.dev"
+  },
   "license": "MIT OR Apache-2.0",
   "homepage": "https://github.com/kent-tokyo/ajisai",
   "repository": {
@@ -65,7 +68,8 @@
     },
     "linux": {
       "target": ["AppImage", "deb"],
-      "category": "Development"
+      "category": "Development",
+      "maintainer": "maintainers@ajisai.dev"
     },
     "nsis": {
       "oneClick": false,
