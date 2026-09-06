@@ -99,7 +99,10 @@ jobs:
           cp ajisai-cargo-metadata.json release-artifacts/ajisai-cargo-metadata.json
           cp ajisai-sbom.cdx.json release-artifacts/ajisai-sbom.cdx.json
           cp ajisai-build-info.json release-artifacts/ajisai-build-info.json
-          find release-artifacts -type f -print0 | sort -z | xargs -0 sha256sum > release-artifacts/SHA256SUMS
+          (
+            cd release-artifacts
+            find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum
+          ) > release-artifacts/SHA256SUMS
 
       - name: Verify release artifacts independently
         run: python3 scripts/verify-release-artifacts.py release-artifacts
