@@ -8,7 +8,7 @@ fixtures and measurements in [`ROADMAP.md`](ROADMAP.md).
 
 ## Current status
 
-The workspace is an active rebuild baseline (`0.1.0`), not a production or
+The workspace is an active rebuild baseline (`0.1.1`), not a production or
 full-Hop-compatibility release. Implemented slices include:
 
 - Native Pipeline/Workflow JSON contracts, validation, canonical migration,

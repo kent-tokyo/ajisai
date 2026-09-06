@@ -16,7 +16,7 @@
 | Desktop UI | Electron + React renderer, Rust JSON-RPC sidecar, localStorage autosave | Reuse only as a client prototype; backend state and failure recovery require redesign |
 | CI | Rust format/build/test matrix is present for three OSes; dependency audit runs in CI and again in the release artifact job; Electron/package checks are separate or absent | Add unified contract, accessibility, security, and package gates |
 | Fixtures | `tests/fixtures/manifest.json` pins 12 definitions/oracles; `scripts/verify-fixtures.py` verifies SHA-256 and generated outputs are explicitly mutable | Add broader generated workloads and independent Hop oracles |
-| Version sources | Root Rust workspace is `0.1.0`; `electron/package.json` is `0.3.0`; target stable release is v2.0.0 | Resolve one authoritative source and bump only after v2.0 gates pass |
+| Version sources | Root Rust workspace is `0.1.1`; `electron/package.json` is `0.3.0`; target stable release is v2.0.0 | Rust workspace version is authoritative for the CLI and crates; Electron version remains independently managed |
 
 ## Claims ledger
 

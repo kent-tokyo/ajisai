@@ -4,7 +4,7 @@
 
 > 以下はロードマップ再設定前の実装履歴です。現在の状態・主張・候補版
 > ゲートは [`ROADMAP.md`](ROADMAP.md) と
-> Target stable release: **v2.0.0**. Current workspace baseline remains **0.1.0** until all release gates pass.
+> Target stable release: **v2.0.0**. Current workspace baseline is **0.1.1** until all release gates pass.
 > [`docs/release/candidate-checklist.md`](docs/release/candidate-checklist.md)
 > を参照してください。
 
@@ -12,6 +12,16 @@
 
 - `ajisai-cli run --json` に、行統計と構造化実行イベントを含む版付き成功結果を追加。
 - 現行ドキュメントを `ROADMAP.md` と候補チェックリストに集約。
+
+## [0.1.1] - 2026-09-06
+
+再構築版の Rust ワークスペース基準版と、リリース準備に関する文書・検証
+の更新をまとめたパッチリリースです。v2.0.0 が安定版の目標であり、完全な
+Apache Hop 互換性や本番運用を主張するものではありません。
+
+- Rust ワークスペースと各クレートの基準バージョンを `0.1.1` に更新。
+- ロードマップ、リリースチェックリスト、README の状態表記を同期。
+- v2.0.0 の未完了ゲートと証拠の境界を維持。
 
 ## [0.1.0] - 2026-06-08
 

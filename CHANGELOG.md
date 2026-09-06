@@ -4,13 +4,25 @@ All notable changes to this project will be documented in this file.
 
 > Entries below describe the pre-reset implementation history. Current
 > rebuild status, claims, and release gates are maintained in [`ROADMAP.md`](ROADMAP.md)
-> Target stable release: **v2.0.0**. The current workspace baseline remains **0.1.0** until every release gate passes.
+> Target stable release: **v2.0.0**. The current workspace baseline is **0.1.1** until every release gate passes.
 > See [`docs/release/candidate-checklist.md`](docs/release/candidate-checklist.md).
 
 ## Unreleased (candidate work)
 
 - Added `ajisai-cli run --json`, a versioned success envelope containing row statistics and structured execution events.
 - Consolidated current documentation around `ROADMAP.md` and the candidate checklist.
+
+## [0.1.1] - 2026-09-06
+
+This patch release records the rebuilt Rust workspace baseline and the
+release-readiness documentation and verification improvements delivered since
+v0.1.0. The target stable generation remains v2.0.0; this release does not
+claim full Apache Hop parity or production readiness.
+
+- Bumped the authoritative Rust workspace and crate version to `0.1.1`.
+- Updated release, roadmap, and localized README status to match the shipped
+  baseline.
+- Retained the v2.0.0 candidate gates and explicit evidence boundaries.
 
 ## [0.3.0] - 2026-06-09
 

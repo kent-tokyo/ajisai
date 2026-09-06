@@ -3,9 +3,9 @@
 **Status:** RESET / planning baseline  
 **Canonical roadmap:** this file  
 **Last updated:** 2026-09-05  
-**Version policy:** v2.0.0 is the target stable release for the rebuilt product. This roadmap does not change the current package versions; Phase 0 establishes one authoritative version source before the first publishable tag.
+**Version policy:** v2.0.0 is the target stable release for the rebuilt product. The Rust workspace version is authoritative for the CLI and crates; patch releases may update the active `0.1.x` baseline while v2.0 gates remain open.
 
-The target definition and release gates are maintained in [`docs/release/v2.0-target.md`](docs/release/v2.0-target.md). Until those gates pass, the workspace remains a `0.1.0` development baseline.
+The target definition and release gates are maintained in [`docs/release/v2.0-target.md`](docs/release/v2.0-target.md). Until those gates pass, the workspace remains a `0.1.x` development baseline (currently `0.1.1`).
 
 ## 1. Product thesis
 

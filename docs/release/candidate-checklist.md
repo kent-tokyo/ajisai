@@ -1,9 +1,10 @@
 # Ajisai v2.0.0 target candidate checklist
 
-Current workspace baseline: `0.1.0`. Target publishable tag: `v2.0.0`.
+Current workspace baseline: `0.1.1`. Target publishable tag: `v2.0.0`.
 
 This checklist records the evidence required before treating the current
-working tree as a version candidate. It does not change the workspace version.
+working tree as a version candidate. It is kept alongside the active patch
+baseline and does not by itself authorize a stable v2.0.0 release.
 
 ## Reproducible checks
 

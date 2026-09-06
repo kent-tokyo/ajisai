@@ -33,7 +33,7 @@ dependencies = [
 
 [[package]]
 name = "ajisai-cli"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ajisai-core",
  "ajisai-hop-compat",
@@ -51,7 +51,7 @@ dependencies = [
 
 [[package]]
 name = "ajisai-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "chrono",
@@ -64,7 +64,7 @@ dependencies = [
 
 [[package]]
 name = "ajisai-hop-compat"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ajisai-core",
  "async-trait",
@@ -78,7 +78,7 @@ dependencies = [
 
 [[package]]
 name = "ajisai-server"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ajisai-core",
  "ajisai-hop-compat",
@@ -92,7 +92,7 @@ dependencies = [
 
 [[package]]
 name = "ajisai-transforms"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ajisai-core",
  "ajisai-hop-compat",
