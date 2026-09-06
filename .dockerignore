@@ -1,0 +1,6 @@
+.git
+target
+electron/node_modules
+electron/dist
+benchmarks/latest.json
+${OUTPUT_FILE}

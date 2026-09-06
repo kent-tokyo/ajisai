@@ -1,8 +1,8 @@
 use ajisai_core::{
+    AjisaiError, PipelineEngine, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Row, RowSchema},
-    AjisaiError, PipelineEngine, Transform,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -74,7 +74,7 @@ impl Transform for PipelineExecutor {
         let ctx = self.ctx.clone().unwrap_or_default();
         let resolved_path = ctx.resolve(&self.config.sub_pipeline_path);
 
-        let path = crate::utils::resolve_safe_path(&resolved_path)?;
+        let path = crate::utils::resolve_context_path(&ctx, &resolved_path)?;
         let xml = std::fs::read_to_string(&path).map_err(AjisaiError::Io)?;
 
         let hop_pipeline = ajisai_hop_compat::parse_hpl(&xml)?;

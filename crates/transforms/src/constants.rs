@@ -1,8 +1,8 @@
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Field, Row, RowSchema, Value, ValueType},
-    AjisaiError, Transform,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -57,10 +57,7 @@ impl AddConstants {
                     (ValueType::Float, Value::Float(f))
                 }
                 "Boolean" => {
-                    let b = match cf.value.to_lowercase().as_str() {
-                        "true" | "1" | "yes" => true,
-                        _ => false,
-                    };
+                    let b = matches!(cf.value.to_lowercase().as_str(), "true" | "1" | "yes");
                     (ValueType::Boolean, Value::Bool(b))
                 }
                 _ => (ValueType::String, Value::Str(cf.value.clone())),

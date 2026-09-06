@@ -1,0 +1,14 @@
+{
+  "format": "ajisai.pipeline",
+  "format_version": 1,
+  "name": "error-hop",
+  "nodes": [
+    {"id":"generate","type_name":"GenerateRows","label":"Generate","pos":[0.0,0.0],"config":{"fields":[{"name":"id","type":"integer","value":"1"}],"limit":1}},
+    {"id":"abort","type_name":"Abort","label":"Abort","pos":[200.0,0.0],"config":{"message":"intentional failure"}},
+    {"id":"errors","type_name":"CsvFileOutput","label":"Errors","pos":[400.0,0.0],"config":{"filename":"/private/tmp/ajisai-error-hop.csv","delimiter":",","header_present":true,"append":false}}
+  ],
+  "edges": [
+    {"from":"generate","to":"abort"},
+    {"from":"abort","to":"errors","is_error":true}
+  ]
+}

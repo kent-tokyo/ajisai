@@ -1,8 +1,8 @@
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Field, Row, RowSchema, Value, ValueType},
-    AjisaiError, Transform,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -135,7 +135,9 @@ impl Transform for TableInput {
             .map_err(|e| AjisaiError::Config(format!("DB connect failed: {}", e)))?;
 
         let sql = &self.config.sql;
-        let rows = sqlx::query(sql)
+        // The SQL is an explicit project configuration string; SQLx 0.9
+        // requires an explicit audit marker for dynamic statements.
+        let rows = sqlx::query(sqlx::AssertSqlSafe(sql.clone()))
             .fetch_all(&pool)
             .await
             .map_err(|e| AjisaiError::Pipeline(format!("Query failed: {}", e)))?;

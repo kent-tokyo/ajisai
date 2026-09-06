@@ -1,8 +1,8 @@
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Field, Row, RowSchema, Value, ValueType},
-    AjisaiError, Transform,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -53,8 +53,8 @@ impl NumberRange {
 
     fn classify(&self, num: f64) -> &str {
         for r in &self.config.ranges {
-            let above_lower = r.lower.map_or(true, |lo| num >= lo);
-            let below_upper = r.upper.map_or(true, |hi| num <= hi);
+            let above_lower = r.lower.is_none_or(|lo| num >= lo);
+            let below_upper = r.upper.is_none_or(|hi| num <= hi);
             if above_lower && below_upper {
                 return &r.result;
             }

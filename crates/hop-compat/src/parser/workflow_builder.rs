@@ -1,7 +1,7 @@
 use crate::model::hop_workflow::HopWorkflow;
 use ajisai_core::{
-    workflow::{Action, ActionResult, HopEvaluation, Workflow},
     AjisaiError, ExecutionContext, TransformRegistry,
+    workflow::{Action, ActionResult, HopEvaluation, Workflow},
 };
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -258,8 +258,9 @@ impl Action for SetVariablesAction {
     async fn execute<'a>(&'a mut self, ctx: &'a ExecutionContext) -> ActionResult {
         for (k, v) in &self.variables {
             let resolved = ctx.resolve(v);
-            // Set as OS environment variable so subsequent actions/pipelines see it
-            unsafe { std::env::set_var(k, &resolved); }
+            // Keep variables inside the shared execution context. Never mutate
+            // process-global environment state from a workflow action.
+            ctx.set_var_shared(k, resolved);
         }
         ActionResult::ok()
     }

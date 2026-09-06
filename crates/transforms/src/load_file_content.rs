@@ -1,9 +1,9 @@
 use crate::utils::resolve_safe_path;
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Field, Row, RowSchema, Value, ValueType},
-    AjisaiError, Transform,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -11,15 +11,11 @@ use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum Encoding {
+    #[default]
     Utf8,
     Base64,
-}
-
-impl Default for Encoding {
-    fn default() -> Self {
-        Self::Utf8
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -36,6 +32,7 @@ pub struct LoadFileContentConfig {
 pub struct LoadFileContent {
     config: LoadFileContentConfig,
     output_schema: Option<Arc<RowSchema>>,
+    project_root: Option<std::path::PathBuf>,
 }
 
 impl LoadFileContent {
@@ -43,6 +40,7 @@ impl LoadFileContent {
         Self {
             config,
             output_schema: None,
+            project_root: None,
         }
     }
 
@@ -65,7 +63,8 @@ impl Transform for LoadFileContent {
         Ok(RowSchema::new(fields))
     }
 
-    async fn open(&mut self, _ctx: &ExecutionContext) -> Result<()> {
+    async fn open(&mut self, ctx: &ExecutionContext) -> Result<()> {
+        self.project_root = ctx.project_root().map(std::path::Path::to_path_buf);
         Ok(())
     }
 
@@ -84,7 +83,11 @@ impl Transform for LoadFileContent {
             .map(|v| v.to_display_string())
             .unwrap_or_default();
 
-        let safe_path = resolve_safe_path(&path_raw)?;
+        let safe_path = if let Some(root) = &self.project_root {
+            crate::utils::resolve_path_in_root(root, &path_raw)?
+        } else {
+            resolve_safe_path(&path_raw)?
+        };
 
         let content = match self.config.encoding {
             Encoding::Utf8 => std::fs::read_to_string(&safe_path).map_err(AjisaiError::Io)?,
@@ -157,5 +160,22 @@ mod tests {
             out[0].get("content"),
             Some(&Value::Str("hello world".into()))
         );
+    }
+
+    #[tokio::test]
+    async fn project_root_scopes_row_derived_path() {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::write(root.path().join("safe.txt"), "safe").unwrap();
+        let mut context = ExecutionContext::new();
+        context.set_project_root(root.path());
+        let mut t = LoadFileContent::new(LoadFileContentConfig {
+            path_field: "path".into(),
+            content_field: "content".into(),
+            encoding: Encoding::Utf8,
+        });
+        t.open(&context).await.unwrap();
+        let out = t.process(make_row("safe.txt")).await.unwrap();
+        assert_eq!(out[0].get("content"), Some(&Value::Str("safe".into())));
+        assert!(t.process(make_row("../escape.txt")).await.is_err());
     }
 }

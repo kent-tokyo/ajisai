@@ -1,0 +1,25 @@
+{
+  "format": "ajisai.workflow",
+  "format_version": 1,
+  "name": "minimal-workflow",
+  "actions": [
+    {
+      "id": "run_pipeline",
+      "type": "pipeline",
+      "config": { "path": "minimal.ajp" }
+    },
+    {
+      "id": "notify",
+      "type": "log",
+      "config": { "message": "done" }
+    }
+  ],
+  "hops": [
+    {
+      "from": "run_pipeline",
+      "to": "notify",
+      "evaluation": "success",
+      "unconditional": false
+    }
+  ]
+}

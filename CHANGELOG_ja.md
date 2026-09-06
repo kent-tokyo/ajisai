@@ -2,6 +2,17 @@
 
 このプロジェクトで実施した注目すべき変更をすべて記録します。
 
+> 以下はロードマップ再設定前の実装履歴です。現在の状態・主張・候補版
+> ゲートは [`ROADMAP.md`](ROADMAP.md) と
+> Target stable release: **v2.0.0**. Current workspace baseline remains **0.1.0** until all release gates pass.
+> [`docs/release/candidate-checklist.md`](docs/release/candidate-checklist.md)
+> を参照してください。
+
+## 未リリース（候補版作業）
+
+- `ajisai-cli run --json` に、行統計と構造化実行イベントを含む版付き成功結果を追加。
+- 現行ドキュメントを `ROADMAP.md` と候補チェックリストに集約。
+
 ## [0.1.0] - 2026-06-08
 
 ### Phase 6B: Electron GUI 移行 - 完了 ✅

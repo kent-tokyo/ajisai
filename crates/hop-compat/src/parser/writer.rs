@@ -127,3 +127,57 @@ fn json_value_to_string(v: &serde_json::Value) -> String {
         other => other.to_string(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::pipeline::parse_hpl;
+
+    #[test]
+    fn writes_and_parses_hop_pipeline_contract() {
+        let mut pipeline = HopPipeline {
+            name: "compat-fixture".into(),
+            ..HopPipeline::default()
+        };
+        pipeline
+            .transforms
+            .push(crate::model::hop_pipeline::HopTransform {
+                name: "input".into(),
+                type_name: "CSVFileInput".into(),
+                description: Some("source".into()),
+                xloc: Some(10),
+                yloc: Some(20),
+                attributes: [("filename".into(), serde_json::json!("input.csv"))]
+                    .into_iter()
+                    .collect(),
+            });
+        pipeline.order.push(crate::model::hop_pipeline::HopHop {
+            from: "input".into(),
+            to: "output".into(),
+            enabled: Some(true),
+            error_hop: Some(false),
+        });
+        let parsed = parse_hpl(&write_hpl(&pipeline).unwrap()).unwrap();
+        assert_eq!(parsed.name, "compat-fixture");
+        assert_eq!(parsed.transforms[0].type_name, "CSVFileInput");
+        assert_eq!(parsed.transforms[0].attributes["filename"], "input.csv");
+        assert_eq!(parsed.order[0].from, "input");
+    }
+
+    #[test]
+    fn parses_repository_hop_fixtures() {
+        for path in [
+            "../../tests/fixtures/sample.hpl",
+            "../../tests/fixtures/showcase.hpl",
+        ] {
+            let xml = std::fs::read_to_string(path).unwrap();
+            let parsed = parse_hpl(&xml).unwrap();
+            assert!(!parsed.name.is_empty(), "fixture name missing: {path}");
+            assert!(
+                !parsed.transforms.is_empty(),
+                "fixture transforms missing: {path}"
+            );
+            assert!(!parsed.order.is_empty(), "fixture hops missing: {path}");
+        }
+    }
+}

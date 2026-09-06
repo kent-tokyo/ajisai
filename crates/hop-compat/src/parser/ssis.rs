@@ -17,8 +17,8 @@
 ///   Lookup                → StreamLookup
 use crate::model::hop_pipeline::{HopHop, HopPipeline, HopTransform};
 use ajisai_core::AjisaiError;
-use quick_xml::events::Event;
 use quick_xml::Reader;
+use quick_xml::events::Event;
 use std::collections::HashMap;
 
 /// Parse a SSIS .dtsx package XML into a HopPipeline IR (best-effort).
@@ -53,17 +53,17 @@ pub fn parse_dtsx(xml: &str) -> Result<HopPipeline, AjisaiError> {
                     let attrs = collect_dts_attrs(&e);
                     if attrs.get("CreationName").map(|s| s.as_str()) == Some("Microsoft.Pipeline") {
                         in_data_flow = true;
-                        if pipeline.name.is_empty() {
-                            if let Some(n) = attrs.get("ObjectName") {
-                                pipeline.name = n.clone();
-                            }
+                        if pipeline.name.is_empty()
+                            && let Some(n) = attrs.get("ObjectName")
+                        {
+                            pipeline.name = n.clone();
                         }
                     }
                     // Set overall pipeline name from outermost Package
-                    if attrs.get("CreationName").map(|s| s.as_str()) == Some("Microsoft.Package") {
-                        if let Some(n) = attrs.get("ObjectName") {
-                            pipeline.name = n.clone();
-                        }
+                    if attrs.get("CreationName").map(|s| s.as_str()) == Some("Microsoft.Package")
+                        && let Some(n) = attrs.get("ObjectName")
+                    {
+                        pipeline.name = n.clone();
                     }
                 }
 
@@ -123,7 +123,7 @@ pub fn parse_dtsx(xml: &str) -> Result<HopPipeline, AjisaiError> {
 
             Ok(Event::Text(e)) => {
                 current_text = e
-                    .unescape()
+                    .decode()
                     .map_err(|e| AjisaiError::Parse(e.to_string()))?
                     .into_owned();
             }
@@ -131,12 +131,13 @@ pub fn parse_dtsx(xml: &str) -> Result<HopPipeline, AjisaiError> {
             Ok(Event::End(e)) => {
                 let local = local_name(&e.name());
 
-                if local == "component" && in_pipeline_section {
-                    if let Some(t) = current_component.take() {
-                        let idx = pipeline.transforms.len();
-                        name_to_idx.insert(t.name.clone(), idx);
-                        pipeline.transforms.push(t);
-                    }
+                if local == "component"
+                    && in_pipeline_section
+                    && let Some(t) = current_component.take()
+                {
+                    let idx = pipeline.transforms.len();
+                    name_to_idx.insert(t.name.clone(), idx);
+                    pipeline.transforms.push(t);
                 }
                 if local == "pipeline" {
                     in_pipeline_section = false;
@@ -190,7 +191,7 @@ pub fn parse_dtsx(xml: &str) -> Result<HopPipeline, AjisaiError> {
 /// Strip namespace prefix, e.g. "DTS:Executable" → "Executable"
 fn local_name(qname: &quick_xml::name::QName<'_>) -> String {
     let full = String::from_utf8_lossy(qname.as_ref()).into_owned();
-    full.split(':').last().unwrap_or(&full).to_owned()
+    full.split(':').next_back().unwrap_or(&full).to_owned()
 }
 
 /// Collect attributes that use the DTS: prefix (e.g. DTS:ObjectName)
@@ -198,7 +199,7 @@ fn collect_dts_attrs(e: &quick_xml::events::BytesStart<'_>) -> HashMap<String, S
     let mut map = HashMap::new();
     for attr in e.attributes().flatten() {
         let key = String::from_utf8_lossy(attr.key.as_ref()).into_owned();
-        let local_key = key.split(':').last().unwrap_or(&key).to_owned();
+        let local_key = key.split(':').next_back().unwrap_or(&key).to_owned();
         let val = String::from_utf8_lossy(&attr.value).into_owned();
         map.insert(local_key, val);
     }

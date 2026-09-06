@@ -1,387 +1,64 @@
 # Ajisai
 
-Apache Hop 互換の超軽量・爆速 ETL エンジン。Rust で再構築。
+Ajisai は、明快な操作、安全な Apache Hop 移行、メモリ境界のある実行を
+目指して Rust で再構築中のローカルファースト ETL です。`Pipeline` は
+行ストリームのグラフ、`Workflow` はオーケストレーションのグラフです。
+性能・互換性の主張は [`ROADMAP.md`](ROADMAP.md) の固定 fixture と測定結果
+に基づきます。
 
-> Apache Hop の強力なデータ変換機能を維持しつつ、JVM を捨て、シングルバイナリで動く。
+## 現在の状態
 
-[English](README.md) | 日本語 | [中文](README_zh.md)
+ワークスペースは再構築中の `0.1.0` ベースラインであり、本番版でも完全な
+Hop 互換版でもありません。現在の実装スライスは次のとおりです。
 
----
+- Native Pipeline/Workflow の JSON 契約、検証、正規化 migration、semantic
+  diff、Hop の error hop 保持;
+- bounded Tokio 実行、キャンセル・timeout・行数・buffered-row 上限、
+  atomic sink、構造化 run/node イベント、secret redaction;
+- CSV、JSON、XML、Parquet、Excel、SQLite/PostgreSQL、REST transforms;
+- Hop の `supported` / `supported-with-difference` / `unsupported` assessment
+  と、実行しないプロジェクト棚卸し;
+- `validate`、`explain`、`inspect`、`preview`、`assess`、`scan`、`migrate`、
+  `doctor`、`run`、`list-transforms` CLI。
 
-![Demo](docs/screenshots/demo.gif)
+Studio の使いやすさ、Hop 2.19.0 差分ベンチマーク、大規模メモリ・ディスク
+試験、fuzzing、独立セキュリティレビュー、再現可能な配布物は未完了です。
 
-| 分岐パイプライン | 実行結果 | プロパティパネル |
-|:---:|:---:|:---:|
-| ![Pipeline](docs/screenshots/04_showcase_pipeline.png) | ![Run](docs/screenshots/05_showcase_run.png) | ![Properties](docs/screenshots/06_properties_panel.png) |
-
-| 起動画面 | 日本語 UI | 実行後 |
-|:---:|:---:|:---:|
-| ![Startup](docs/screenshots/01_startup.png) | ![Japanese](docs/screenshots/08_japanese_ui.png) | ![Japanese run](docs/screenshots/09_japanese_run.png) |
-
----
-
-## なぜ Ajisai を選ぶのか
-
-### 既存の ETL ツールの問題
-
-| ツール | 問題点 |
-|---|---|
-| Apache Hop / Talend / Pentaho | JVM 必須。起動に数秒、メモリ消費が数百 MB 以上 |
-| Apache Spark / Flink | 大規模向け。数十 GB 以下のバッチには過剰 |
-| dbt | SQL 変換専用。ファイル I/O・複雑な行変換が苦手 |
-| Airbyte / Fivetran | EL(T) コネクタ中心。変換ロジックが書きにくい |
-| Python (pandas/Polars) | 柔軟だが、非エンジニア向けの GUI がない |
-
-### Ajisai が解決すること
-
-- **単一バイナリ** — `ajisai-cli` 1ファイルをコピーするだけで動作（依存ゼロ）
-- **即時起動** — JVM ウォームアップなし。cron / CI / Lambda で使いやすい
-- **省メモリ** — 数百万行のパイプラインを数十 MB で処理
-- **GUI & CLI 両対応** — ビジュアルエディタでパイプライン設計 → CLI で本番実行
-- **Apache Hop 資産を活かす** — 既存の `.hpl` ファイルをそのまま読み込める
-
----
-
-## 他ツールとの詳細比較
-
-| | **Ajisai** | Apache Hop | Pentaho PDI | Apache Spark | dbt | Polars (Python) |
-|---|---|---|---|---|---|---|
-| **実行環境** | Rust ネイティブ | JVM | JVM | JVM / クラスター | Python + DBアダプタ | Python |
-| **インストール** | バイナリ 1ファイル | JVM + 500MB+ | JVM + 500MB+ | クラスター構築 | pip + DB接続 | pip |
-| **起動時間** | **即時 (< 10ms)** | 3〜10秒 | 3〜10秒 | 30秒〜 | 数秒 | 〜1秒 |
-| **メモリ消費** | **〜10MB〜** | 256MB〜 | 256MB〜 | GB〜 | DBに依存 | 数十 MB〜 |
-| **ビジュアル GUI** | ○ | ○ | ○ | × | × | × |
-| **CLI バッチ実行** | ○ | ○ | ○ | ○ | ○ | スクリプト |
-| **Apache Hop 互換** | .hpl 読み込み | ネイティブ | △ 共通祖先 | × | × | × |
-| **ファイル I/O** | CSV / JSON / Excel / Parquet / XML / REST API | 多数 | 多数 | HDFS / S3 等 | DBのみ | CSV / Parquet 等 |
-| **対象規模** | 〜数億行 | 〜数千万行 | 〜数千万行 | 数十億行〜 | DBに依存 | 〜数億行 |
-| **Windows 対応** | ○ | ○ | ○ | △ | ○ | ○ |
-| **クラスター不要** | ○ | ○ | ○ | × | ○ | ○ |
-| **ライセンス** | MIT / Apache-2.0 | Apache-2.0 | Apache-2.0 | Apache-2.0 | Apache-2.0 | MIT |
-
-### Ajisai が特に有利なシーン
-
-- **CI/CD 組み込み ETL** — GitHub Actions / GitLab CI で追加依存なしに実行
-- **エッジ / 組み込み環境** — IoT デバイスや RAM 制限環境でのデータ変換
-- **Apache Hop からの移行** — `.hpl` ファイルを変更せずに高速実行エンジンに切り替え
-- **マイクロサービスの ETL** — Docker イメージを最小化したい場合
-- **定期バッチ** — cron で軽量実行。JVM ウォームアップのオーバーヘッドがない
-
----
-
-## 特徴
-
-- **Apache Hop 互換** — `.hpl` パイプラインファイルを直接読み込める
-- **高速・省メモリ** — Rust ネイティブバイナリ。tokio による非同期実行、rayon による CPU 並列処理
-- **CUI / GUI 両対応** — CLI ツールと Electron + React のビジュアルパイプラインエディタ (VS Code スタイル)
-- **クロスプラットフォーム** — Windows / macOS / Linux
-- **多言語対応** — 日本語 / English (UI・CLI 両対応)
-
----
-
-## インストール
+## ビルドと実行
 
 ```bash
-git clone <repo>
-cd ajisai
-cargo build --release
-```
-
-バイナリは `target/release/ajisai-cli` に生成されます。
-
----
-
-## クイックスタート
-
-### パイプライン (.hpl) を実行
-
-データの読み込み・加工・書き出しなどの変換処理を定義したファイル。
-
-```bash
-ajisai-cli run -p path/to/pipeline.hpl
-```
-
-### ワークフロー (.hwf) を実行
-
-パイプラインの実行順序の制御・ファイル操作・エラー処理などのオーケストレーションを定義したファイル。
-
-```bash
-ajisai-cli run-workflow -p path/to/workflow.hwf
-```
-
-### パイプラインを検証（実行なし）
-
-```bash
-ajisai-cli validate -p path/to/pipeline.hpl
-```
-
-### 利用可能な Transform 一覧
-
-```bash
-ajisai-cli list-transforms
-```
-
-### 環境変数を渡す
-
-```bash
-ajisai-cli run -p pipeline.hpl -e INPUT_DIR=/data -e OUTPUT_DIR=/output
-```
-
-パイプライン内で `${INPUT_DIR}` として参照できます。
-
----
-
-## サポートする Transform (53種)
-
-### I/O
-
-| Transform | 説明 |
-|---|---|
-| `CsvFileInput` | CSV ファイル読み込み |
-| `CsvFileOutput` | CSV ファイル書き込み |
-| `JsonFileInput` | JSON ファイル読み込み（Array / JSONL 両対応）|
-| `JsonFileOutput` | JSON ファイル書き込み（Array / JSONL 両対応）|
-| `JsonFieldInput` | JSON 文字列フィールドをパースして個別フィールドに展開 |
-| `JsonFieldOutput` | 指定フィールドを JSON 文字列フィールドに変換 |
-| `ExcelFileInput` | Excel ファイル読み込み（.xlsx）|
-| `ExcelFileOutput` | Excel ファイル書き込み（.xlsx）|
-| `ParquetFileInput` | Parquet ファイル読み込み |
-| `ParquetFileOutput` | Parquet ファイル書き込み |
-| `XmlFileInput` | XML ファイル読み込み |
-| `TableInput` | DB テーブルを SQL で読み込み（SQLite / PostgreSQL / MySQL）|
-| `TableOutput` | DB テーブルへの書き込み（Insert / Upsert / Overwrite）|
-| `GenerateRows` | 固定データ行を生成 |
-| `RestClient` | HTTP GET / POST / PUT / DELETE |
-| `GetFileNames` | ディレクトリをスキャンしてファイルメタデータを行として出力 |
-| `LoadFileContent` | ファイル内容をフィールドに読み込み |
-| `WriteToFile` | フィールド値をファイルに書き出し |
-| `PipelineExecutor` | .hpl サブパイプラインを実行 |
-
-### 変換
-
-| Transform | 説明 |
-|---|---|
-| `FilterRows` | 条件式による行フィルタリング |
-| `SelectValues` | フィールドの選択・名前変更・型キャスト |
-| `SortRows` | 複数フィールドによるソート（rayon 並列ソート）|
-| `AddConstants` | 固定値フィールドの追加 |
-| `AddSequence` | 連番フィールドの追加 |
-| `CalculatorStep` | フィールド計算（四則演算・文字列操作・型変換）|
-| `Deduplicate` | 重複行排除（全フィールド / キー指定）|
-| `IfNull` | NULL 値をデフォルト値で置換 |
-| `StringOperations` | trim / 大小文字変換 / pad / substring |
-| `ReplaceInString` | 文字列の検索・置換 |
-| `ConcatFields` | 複数フィールドを区切り文字で結合 |
-| `SplitFieldToRows` | 1 フィールドを区切り文字で複数行に展開 |
-| `AnalyticQuery` | ウィンドウ関数（ROW_NUMBER, RANK, LAG/LEAD, パーティション内 SUM/AVG/MIN/MAX）|
-| `MemoryGroupBy` | グループ集計（sum / avg / min / max / count）|
-| `AppendStreams` | 複数の入力ストリームを結合 |
-| `RowNormaliser` | 横持ち→縦持ち変換 |
-| `RowDenormaliser` | 縦持ち→横持ち変換 |
-| `WriteToLog` | 指定レベルで行をログ出力 |
-| `CloneRow` | 各行を N 回複製 |
-| `FieldSplitter` | フィールドを区切り文字で複数列に分割 |
-| `UniqueRows` | キーで最初の行を保持 |
-| `NumberRange` | 数値を範囲に分類 |
-| `ValueMapper` | ルックアップテーブルで値をマッピング |
-| `ExecuteSQL` | SQL を 1 回またはレコード単位で実行 |
-| `Dummy` | パススルー（何もしない）|
-| `Abort` | 条件付きでパイプラインを停止 |
-| `RegexEval` | 正規表現のキャプチャグループを抽出 |
-| `ScriptStep` | 各行に対して Rhai スクリプトを実行 |
-
-### 結合 / ルックアップ
-
-| Transform | 説明 |
-|---|---|
-| `MergeJoin` | ソートマージ結合（Inner / Left / Right / Full）|
-| `StreamLookup` | インメモリハッシュ結合（ディメンションルックアップ）|
-| `DatabaseLookup` | SQL によるデータベースルックアップ |
-
-### 変数 / フロー制御
-
-| Transform | 説明 |
-|---|---|
-| `SetVariable` | パイプライン変数を設定 |
-| `GetVariable` | パイプライン変数をフィールドに読み込み |
-| `SwitchCase` | 値に応じて行を異なる出力先に振り分け |
-
----
-
-## パイプラインファイル (.hpl) の例
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<pipeline>
-  <name>My Pipeline</name>
-  <transform>
-    <name>CSV Input</name>
-    <type>CSVFileInput</type>
-    <filename>${INPUT_FILE}</filename>
-    <separator>,</separator>
-    <header>Y</header>
-  </transform>
-  <transform>
-    <name>Filter Adults</name>
-    <type>FilterRows</type>
-  </transform>
-  <transform>
-    <name>CSV Output</name>
-    <type>CSVFileOutput</type>
-    <filename>${OUTPUT_FILE}</filename>
-    <separator>,</separator>
-    <header>Y</header>
-  </transform>
-  <order>
-    <hop>
-      <from>CSV Input</from>
-      <to>Filter Adults</to>
-      <enabled>Y</enabled>
-    </hop>
-    <hop>
-      <from>Filter Adults</from>
-      <to>CSV Output</to>
-      <enabled>Y</enabled>
-    </hop>
-  </order>
-</pipeline>
-```
-
-Apache Hop で作成した `.hpl` ファイルをそのまま読み込むことができます。
-
----
-
-## アーキテクチャ
-
-```
-ajisai/
-├── crates/
-│   ├── core/          Row / RowSchema / Value 型定義、実行エンジン、モデル (Node/Edge)
-│   ├── transforms/    標準 Transform 実装群 (50+ transforms)
-│   ├── hop-compat/    .hpl / .hwf / .ktr / .dtsx パーサ、Apache Hop 互換レイヤー
-│   ├── cli/           ajisai-cli バイナリ
-│   └── server/        Electron GUI 用 JSON-RPC サーバー (stdin/stdout IPC)
-├── electron/          Electron + React GUI (VS Code スタイル, Phase 6B)
-└── tests/fixtures/    サンプルパイプライン・テストデータ
-```
-
-### 実行モデル（パイプラインエンジン）
-
-```
-[CsvInput] ──mpsc──> [FilterRows] ──mpsc──> [SortRows] ──mpsc──> [CsvOutput]
-  tokio task           tokio task             tokio task            tokio task
-                                           (rayon 内部)
-```
-
-- ノード間通信: `tokio::sync::mpsc` (bounded) でバックプレッシャー制御
-- I/O バウンド処理: tokio async/await
-- CPU バウンド処理 (Sort など): rayon 並列
-
-### Electron GUI アーキテクチャ
-
-```
-Electron メインプロセス
-  ├─ サイドカー (ajisai-server stdin/stdout JSON-RPC)
-  └─ IPC ハンドラー (loadPipeline, savePipeline, runPipeline など)
-
-Electron レンダラー (React + TypeScript)
-  ├─ コンポーネント (Canvas, Sidebar, PropertiesPanel, LogPanel)
-  ├─ Zustand ストア (PipelineState, nodeStatuses, logLines)
-  └─ contextBridge API (window.ajisai)
-```
-
----
-
-## 開発状況
-
-### 完了フェーズ
-
-| フェーズ | 内容 | 状態 |
-|---|---|---|
-| Phase 1 | CLI + 基本 Transform + .hpl 互換 | ✅ 完成 |
-| Phase 2 | JSON / Calculator / Join / Lookup / DB / .hwf ワークフロー | ✅ 完成 |
-| Phase 3 | GUI — egui ビジュアルパイプラインエディタ (アーカイブ、Electron に置き換え) | ✅ 完成 |
-| Phase 4 | 多言語 UI・パッケージング・リリース CI | ✅ 完成 |
-| Phase 5 | Transform 50種：スクリプト・サブパイプライン・ファイル操作 | ✅ 完成 |
-| Phase 6A | ウィンドウ関数・JSON フィールド Transform | ✅ 完成 |
-
-### 完了：Phase 6B-6C (Electron GUI 移行 + ポーランド)
-
-| サブフェーズ | 内容 | 状態 |
-|---|---|---|
-| 6B-0 | 共有型抽出 (ajisai-core へ移動) | ✅ 完成 |
-| 6B-1 | JSON-RPC サーバー (crates/server) | ✅ 完成 |
-| 6B-2 | Electron スケルトン + Zustand ストア | ✅ 完成 |
-| 6B-3 | Canvas (@xyflow/react) + UI コンポーネント | ✅ 完成 |
-| 6B-4 | ファイル I/O + キーボード操作 + MenuBar | ✅ 完成 |
-| 6C-1 | Transform ごとのフォーム定義（50+ 種） | ✅ 完成 |
-| 6C-2 | Undo/Redo (zundo ミドルウェア) | ✅ 完成 |
-| 6C-3 | ウィンドウ状態の永続化 (localStorage) | ✅ 完成 |
-| 6C-4 | パフォーマンス最適化 (React.memo, useMemo) | ✅ 完成 |
-| 6C-5 | リリース準備（electron-builder、自動更新） | ✅ 完成 |
-
-### 完了：Phase 6D (egui GUI 廃止) ✅ 完成
-
-- ✅ `crates/gui` ディレクトリを削除（egui 実装）
-- ✅ アーカイブブランチ作成: `archive/egui-gui-0.1.0`
-- ✅ 全 egui コード履歴をアーカイブブランチで保存
-- ✅ Electron + React GUI が新しいプライマリ UI
-- **レガシーコードへのアクセス**: `git checkout archive/egui-gui-0.1.0`
-
----
-
-## ロードマップ
-
-### リリース 0.3.0 (現在) 🔄 実装中
-
-**焦点**: **UI ポーランド + パフォーマンス最適化**
-
-| コンポーネント | 状態 |
-|---|---|
-| Phase 9: UI ポーランド (9-1 ～ 9-4) | ✅ 完成 |
-| Phase 6C: GUI ポーランド & 最適化 (6C-1 ～ 6C-5) | ✅ 完成 |
-| Phase 6D: egui GUI 廃止 | ✅ 完成 |
-
-**次のステップ**: `git tag v0.3.0` で 0.3.0 リリース
-
-### リリース 0.4.0 🔄 計画中
-
-**焦点**: **高度なデータ処理 + プロファイリング**
-
-- 高度なデータプレビューパネル
-- カラムレベルのデータプロファイリング
-- リアルタイムパイプライン監視ダッシュボード
-- カスタム Transform 作成 UI
-- プラグインシステム基盤
-
-**予定**: Q3 2026
-
----
-
-## ビルド & テスト
-
-```bash
-# デバッグビルド
 cargo build
-
-# リリースビルド
-cargo build --release
-
-# テスト実行
 cargo test --workspace
-
-# ログレベルを指定して実行
-ajisai-cli --log-level debug run -p pipeline.hpl
+cargo run --bin ajisai-cli -- validate -p tests/fixtures/minimal.ajp
+cargo run --bin ajisai-cli -- run -p tests/fixtures/full-csv.ajp
+# CI向けの機械可読結果
+cargo run --bin ajisai-cli -- run -p tests/fixtures/full-csv.ajp --json
+# 実行計画だけを確認（副作用なし）
+cargo run --bin ajisai-cli -- run -p tests/fixtures/full-csv.ajp --dry-run --json
+# Hop workflow のグラフをアクション実行なしで検証
+cargo run --bin ajisai-cli -- run-workflow -p path/to/workflow.hwf --dry-run --json
+# bash補完
+cargo run --bin ajisai-cli -- completions bash > /tmp/ajisai-cli.bash
 ```
 
----
+実行ポリシーは `--max-rows`、`--max-buffered-rows`、`--timeout-secs`、
+`--no-network` です。Hop プロジェクトは実行前に確認できます。
 
-## ライセンス表記
+```bash
+ajisai-cli scan -p path/to/hop-project --json
+ajisai-cli assess -p path/to/pipeline.hpl --json
+```
 
-> "Apache Hop" は Apache Software Foundation の商標です。Ajisai は ASF と無関係な独立プロジェクトであり、ASF による承認・提携・保証はありません。
+## ドキュメント
 
----
+- [`ROADMAP.md`](ROADMAP.md): Phase 0–12 の正規ロードマップと証拠ゲート
+- [`docs/rebuild/current-state.md`](docs/rebuild/current-state.md): 実装監査
+- [`docs/product/golden-workflows.md`](docs/product/golden-workflows.md): 受入契約
+- [`docs/adr/`](docs/adr/): アーキテクチャ決定
+- [`docs/release/`](docs/release/): 候補版チェック・リスク・監査
+- [`benchmarks/README.md`](benchmarks/README.md): ベンチマーク契約
+- [`CHANGELOG.md`](CHANGELOG.md): 過去版の履歴のみ
 
 ## ライセンス
 
-MIT OR Apache-2.0
+MIT OR Apache-2.0。

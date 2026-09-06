@@ -1,8 +1,8 @@
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Row, RowSchema, Value, ValueType},
-    AjisaiError, Transform,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -68,11 +68,10 @@ impl Transform for IfNull {
     async fn process(&mut self, row: Row) -> Result<Vec<Row>> {
         let mut values = row.values.clone();
         for rep in &self.config.replacements {
-            if let Some(idx) = row.schema.fields.iter().position(|f| f.name == rep.field) {
-                if values[idx].is_null() {
-                    values[idx] =
-                        Self::coerce(&rep.default_value, &row.schema.fields[idx].value_type);
-                }
+            if let Some(idx) = row.schema.fields.iter().position(|f| f.name == rep.field)
+                && values[idx].is_null()
+            {
+                values[idx] = Self::coerce(&rep.default_value, &row.schema.fields[idx].value_type);
             }
         }
         Ok(vec![Row::new(row.schema.clone(), values)])

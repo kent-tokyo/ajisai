@@ -1,13 +1,13 @@
-use crate::utils::{coerce, resolve_safe_path};
+use crate::utils::{coerce, resolve_context_path, resolve_safe_path};
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Field, Row, RowSchema, Value, ValueType},
-    AjisaiError, Transform,
 };
 use async_trait::async_trait;
-use quick_xml::events::Event;
 use quick_xml::Reader;
+use quick_xml::events::Event;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -71,7 +71,9 @@ impl Transform for XmlFileInput {
     }
 
     async fn open(&mut self, ctx: &ExecutionContext) -> Result<()> {
-        self.resolved_path = ctx.resolve(&self.config.filename);
+        self.resolved_path = resolve_context_path(ctx, &ctx.resolve(&self.config.filename))?
+            .display()
+            .to_string();
         Ok(())
     }
 
@@ -119,7 +121,7 @@ impl Transform for XmlFileInput {
                 }
                 Ok(Event::Text(ref e)) => {
                     if in_record {
-                        text_buf = e.unescape().unwrap_or_default().into_owned();
+                        text_buf = e.decode().unwrap_or_default().into_owned();
                     }
                 }
                 Ok(Event::End(ref e)) => {

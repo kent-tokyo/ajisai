@@ -1,21 +1,20 @@
-en:
-  run:
+run:
     start: "Running pipeline: %{name}"
     nodes: "Executing %{count} nodes..."
     success: "Pipeline '%{name}' completed in %{ms}ms"
     error: "Pipeline failed: %{error}"
-  validate:
+validate:
     ok: "Pipeline '%{name}' is valid (%{nodes} nodes, %{hops} hops)"
     nodes_header: "Nodes:"
     hops_header: "Hops:"
     error: "Validation failed: %{error}"
-  list:
+list:
     header: "Available transforms (%{count}):"
-  workflow:
+workflow:
     start: "Running workflow: %{name}"
     success: "Workflow '%{name}' completed in %{ms}ms"
     error: "Workflow failed: %{error}"
-  error:
+error:
     file_not_found: "File not found: %{path}"
-    unsupported_format: "Unsupported file format (expected .hpl or .hwf): %{path}"
+    unsupported_format: "Unsupported file format (expected a supported Hop/Kettle/SSIS pipeline or workflow): %{path}"
     invalid_env: "Warning: ignoring invalid --env value (expected KEY=VALUE): %{value}"

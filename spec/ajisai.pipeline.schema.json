@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ajisai.dev/schema/ajisai.pipeline-1.json",
+  "title": "Ajisai Native Pipeline",
+  "type": "object",
+  "required": ["format", "format_version", "name", "nodes", "edges"],
+  "properties": {
+    "format": {"const": "ajisai.pipeline"},
+    "format_version": {"const": 1},
+    "name": {"type": "string", "minLength": 1},
+    "nodes": {"type": "array", "items": {"$ref": "#/$defs/node"}},
+    "edges": {"type": "array", "items": {"$ref": "#/$defs/edge"}}
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "required": ["id", "type_name", "label", "pos", "config"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "type_name": {"type": "string", "minLength": 1},
+        "label": {"type": "string"},
+        "pos": {"type": "array", "prefixItems": [{"type": "number"}, {"type": "number"}], "minItems": 2, "maxItems": 2},
+        "config": {}
+      },
+      "additionalProperties": true
+    },
+    "edge": {
+      "type": "object",
+      "required": ["from", "to"],
+      "properties": {
+        "from": {"type": "string", "minLength": 1},
+        "to": {"type": "string", "minLength": 1},
+        "is_error": {"type": "boolean", "default": false}
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

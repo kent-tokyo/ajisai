@@ -1,12 +1,12 @@
-use crate::utils::resolve_safe_path;
+use crate::utils::{resolve_context_path, resolve_safe_path};
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Field, Row, RowSchema, Value, ValueType},
-    AjisaiError, Transform,
 };
 use async_trait::async_trait;
-use calamine::{open_workbook_auto, Data, Reader};
+use calamine::{Data, Reader, open_workbook_auto};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
@@ -73,7 +73,9 @@ impl Transform for ExcelFileInput {
     }
 
     async fn open(&mut self, ctx: &ExecutionContext) -> Result<()> {
-        self.resolved_path = ctx.resolve(&self.config.filename);
+        self.resolved_path = resolve_context_path(ctx, &ctx.resolve(&self.config.filename))?
+            .display()
+            .to_string();
         Ok(())
     }
 

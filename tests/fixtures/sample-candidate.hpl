@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pipeline>
+  <name>Sample CSV Candidate E2E</name>
+  <transform>
+    <name>CSV Input</name>
+    <type>CSVFileInput</type>
+    <filename>tests/fixtures/input.csv</filename>
+    <separator>,</separator>
+    <header>Y</header>
+  </transform>
+  <transform>
+    <name>Filter Adults</name>
+    <type>FilterRows</type>
+    <condition_field>age</condition_field>
+    <condition_operator>gte</condition_operator>
+    <condition_value>18</condition_value>
+  </transform>
+  <transform>
+    <name>CSV Output</name>
+    <type>CSVFileOutput</type>
+    <filename>/private/tmp/ajisai-hop-e2e.csv</filename>
+    <separator>,</separator>
+    <header>Y</header>
+  </transform>
+  <order>
+    <hop>
+      <from>CSV Input</from>
+      <to>Filter Adults</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Filter Adults</from>
+      <to>CSV Output</to>
+      <enabled>Y</enabled>
+    </hop>
+  </order>
+</pipeline>

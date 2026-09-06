@@ -1,4 +1,4 @@
-use crate::{transform::TransformFactory, AjisaiError, Result};
+use crate::{AjisaiError, Result, transform::TransformFactory};
 use std::collections::HashMap;
 
 /// Maps transform type names to their factory functions.

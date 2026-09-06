@@ -1,8 +1,11 @@
-use crate::{ExecutionContext, ExecutionStats, Pipeline, PipelineEngine, Result};
-use crate::registry::TransformRegistry;
 use crate::model::PipelineState;
+use crate::registry::TransformRegistry;
+use crate::{ExecutionContext, ExecutionStats, Pipeline, PipelineEngine, Result};
 
-pub async fn build_and_run(ps: &PipelineState, registry: &TransformRegistry) -> Result<ExecutionStats> {
+pub async fn build_and_run(
+    ps: &PipelineState,
+    registry: &TransformRegistry,
+) -> Result<ExecutionStats> {
     let mut pipeline = Pipeline::new(&ps.name);
 
     for node in &ps.nodes {
@@ -11,7 +14,11 @@ pub async fn build_and_run(ps: &PipelineState, registry: &TransformRegistry) -> 
     }
 
     for edge in &ps.edges {
-        pipeline.add_hop(&edge.from, &edge.to);
+        if edge.is_error {
+            pipeline.add_error_hop(&edge.from, &edge.to);
+        } else {
+            pipeline.add_hop(&edge.from, &edge.to);
+        }
     }
 
     PipelineEngine::new(pipeline, ExecutionContext::new())

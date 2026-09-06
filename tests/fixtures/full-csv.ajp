@@ -1,0 +1,62 @@
+{
+  "format": "ajisai.pipeline",
+  "format_version": 1,
+  "name": "csv-clean-filter",
+  "nodes": [
+    {
+      "id": "read_csv",
+      "type_name": "CsvFileInput",
+      "label": "Read CSV",
+      "pos": [0.0, 0.0],
+      "config": {
+        "filename": "tests/fixtures/input.csv",
+        "delimiter": ",",
+        "header_present": true,
+        "fields": [
+          { "name": "name", "value_type": "String" },
+          { "name": "age", "value_type": "Integer" },
+          { "name": "city", "value_type": "String" }
+        ]
+      }
+    },
+    {
+      "id": "select_fields",
+      "type_name": "SelectValues",
+      "label": "Select and cast",
+      "pos": [240.0, 0.0],
+      "config": {
+        "fields": [
+          { "name": "name" },
+          { "name": "age", "value_type": "Integer" },
+          { "name": "city", "rename": "location" }
+        ]
+      }
+    },
+    {
+      "id": "filter_adults",
+      "type_name": "FilterRows",
+      "label": "Adults only",
+      "pos": [480.0, 0.0],
+      "config": {
+        "condition": { "op": "gte", "field": "age", "value": "18" }
+      }
+    },
+    {
+      "id": "write_csv",
+      "type_name": "CsvFileOutput",
+      "label": "Write CSV",
+      "pos": [720.0, 0.0],
+      "config": {
+        "filename": "${OUTPUT_FILE}",
+        "delimiter": ",",
+        "header_present": true,
+        "append": false
+      }
+    }
+  ],
+  "edges": [
+    { "from": "read_csv", "to": "select_fields" },
+    { "from": "select_fields", "to": "filter_adults" },
+    { "from": "filter_adults", "to": "write_csv" }
+  ]
+}

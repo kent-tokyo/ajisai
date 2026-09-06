@@ -19,13 +19,6 @@ pub struct RpcResponse {
     pub error: Option<RpcError>,
 }
 
-/// Notification sent asynchronously (Rust → Electron, NO id field)
-#[derive(Debug, Serialize)]
-pub struct RpcNotification {
-    pub method: String,
-    pub params: serde_json::Value,
-}
-
 #[derive(Debug, Serialize)]
 pub struct RpcError {
     pub code: i32,
@@ -38,10 +31,6 @@ impl RpcError {
             code,
             message: message.into(),
         }
-    }
-
-    pub fn invalid_params(msg: impl Into<String>) -> Self {
-        Self::new(-32602, msg)
     }
 
     pub fn internal_error(msg: impl Into<String>) -> Self {

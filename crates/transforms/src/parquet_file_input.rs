@@ -1,9 +1,9 @@
-use crate::utils::resolve_safe_path;
+use crate::utils::{resolve_context_path, resolve_safe_path};
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Field, Row, RowSchema},
-    AjisaiError, Transform,
 };
 use arrow_array::RecordBatch;
 use async_trait::async_trait;
@@ -65,7 +65,9 @@ impl Transform for ParquetFileInput {
     }
 
     async fn open(&mut self, ctx: &ExecutionContext) -> Result<()> {
-        self.resolved_path = ctx.resolve(&self.config.filename);
+        self.resolved_path = resolve_context_path(ctx, &ctx.resolve(&self.config.filename))?
+            .display()
+            .to_string();
         Ok(())
     }
 

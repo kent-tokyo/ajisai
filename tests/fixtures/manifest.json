@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "description": "Immutable regression corpus for native and Hop compatibility contracts.",
+  "fixtures": [
+    {"path": "error-hop.ajp", "sha256": "83b1baafc576efc6cd07f0363418f956b7a83c252285b63f06086efadc4cd5ce"},
+    {"path": "error-hop.expected.csv", "sha256": "d9843ab9bca229e66235e3887b92395351e8c38dc8e85d77e5bccb5afff1fc90"},
+    {"path": "full-csv.ajp", "sha256": "26de9066fff34959ecb8839a10519a83dcb3f317eac3b3ea327d5aa40c4292b5"},
+    {"path": "full-csv.expected.csv", "sha256": "c3d99c137bc7f2d4fd7178e7656554a85e6b7907167bf7010530cdcdd466b7bb"},
+    {"path": "input.csv", "sha256": "0202b3ac32a1777ec19c3b69c35c4d659b4b55558f592e8d92452445ee15ce81"},
+    {"path": "minimal-run.ajp", "sha256": "dfd05a26d80aea27b2ded8e151ef40ac36bcdb3eea4c8ebca5f93196a338512e"},
+    {"path": "minimal.ajp", "sha256": "b9d336dbc9479fcc006581abd45303adbf8d15dda7c9624d0eac5e5fa56d3ca8"},
+    {"path": "minimal.ajw", "sha256": "119585278e2ede4b8b7ef745e72dfdbc3be273a7e86e419919be155908243356"},
+    {"path": "sample-candidate.expected.csv", "sha256": "2686ba678585a2eaff7f35be72278b4486ecd43e632d0e2a899767a0aa1008a6"},
+    {"path": "sample-candidate.hpl", "sha256": "a460a1756ded2a02eaf38c451e119f61ccb5bb466e83b0698df4627e426c2f87"},
+    {"path": "sample.hpl", "sha256": "ea126204e8bf9779722d8750e594bb20264d6818560999eb5bebcf27307758d0"},
+    {"path": "showcase.hpl", "sha256": "68302105a335510d281c2a7f401d55639efb04b07ef3935fcad1b3e94922529b"}
+  ],
+  "mutable_outputs": ["output.csv", "output_showcase.csv", "output_showcase.json"]
+}

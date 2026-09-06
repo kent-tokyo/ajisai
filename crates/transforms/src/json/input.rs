@@ -1,8 +1,8 @@
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Field, Row, RowSchema, Value, ValueType},
-    AjisaiError, Transform,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -12,17 +12,13 @@ use tracing::debug;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum JsonFormat {
     /// Array of objects: [{"a":1},{"a":2}]
+    #[default]
     Array,
     /// One JSON object per line (JSONL / NDJSON)
     Lines,
-}
-
-impl Default for JsonFormat {
-    fn default() -> Self {
-        JsonFormat::Array
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -230,7 +226,7 @@ impl Transform for JsonFileInput {
             let schema = schema_hint.unwrap_or_else(|| {
                 let s = objects
                     .first()
-                    .map(|o| JsonFileInput::infer_schema(o))
+                    .map(JsonFileInput::infer_schema)
                     .unwrap_or_default();
                 Arc::new(s)
             });

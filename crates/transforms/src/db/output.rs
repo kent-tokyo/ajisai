@@ -1,8 +1,8 @@
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Row, RowSchema, Value},
-    AjisaiError, Transform,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -11,19 +11,15 @@ use tracing::debug;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum WriteMode {
     /// INSERT INTO
+    #[default]
     Insert,
     /// INSERT OR REPLACE / ON CONFLICT DO UPDATE (SQLite / PostgreSQL)
     Upsert,
     /// TRUNCATE then INSERT
     Overwrite,
-}
-
-impl Default for WriteMode {
-    fn default() -> Self {
-        WriteMode::Insert
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -126,10 +122,13 @@ impl TableOutput {
 
         // Execute deferred DELETE inside the transaction on the first flush
         if self.needs_delete {
-            sqlx::query(&format!("DELETE FROM {}", self.config.table))
-                .execute(&mut *tx)
-                .await
-                .map_err(|e| AjisaiError::Pipeline(e.to_string()))?;
+            sqlx::query(sqlx::AssertSqlSafe(format!(
+                "DELETE FROM {}",
+                self.config.table
+            )))
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| AjisaiError::Pipeline(e.to_string()))?;
             self.needs_delete = false;
         }
 
@@ -164,7 +163,9 @@ impl TableOutput {
             );
 
             for row in self.buffer.drain(..) {
-                let mut q = sqlx::query(&sql);
+                // Table and column identifiers are validated above; values use
+                // bind parameters, so this dynamic statement is SQL-safe.
+                let mut q = sqlx::query(sqlx::AssertSqlSafe(sql.clone()));
                 for val in &row.values {
                     q = match val {
                         Value::Int(n) => q.bind(*n),
@@ -201,13 +202,22 @@ impl Transform for TableOutput {
     async fn open(&mut self, ctx: &ExecutionContext) -> Result<()> {
         let url = ctx.resolve(&self.config.connection_url);
 
+        if !ctx.network_allowed()
+            && !url.to_ascii_lowercase().starts_with("sqlite:")
+            && !url.to_ascii_lowercase().starts_with("sqlite::memory:")
+        {
+            return Err(AjisaiError::Config(
+                "Network access disabled by execution policy".into(),
+            ));
+        }
+
         // Upsert mode is only supported for SQLite
-        if matches!(self.config.mode, WriteMode::Upsert) {
-            if !url.to_lowercase().starts_with("sqlite") {
-                return Err(AjisaiError::Config(
-                    "Upsert is only supported for SQLite databases".into(),
-                ));
-            }
+        if matches!(self.config.mode, WriteMode::Upsert)
+            && !url.to_lowercase().starts_with("sqlite")
+        {
+            return Err(AjisaiError::Config(
+                "Upsert is only supported for SQLite databases".into(),
+            ));
         }
 
         debug!("TableOutput connecting to '{}'", mask_url_password(&url));
@@ -242,5 +252,73 @@ impl Transform for TableOutput {
             pool.close().await;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ajisai_core::value::{Field, ValueType};
+    use std::sync::Arc;
+    use tempfile::NamedTempFile;
+
+    fn row(id: i64) -> Row {
+        Row::new(
+            Arc::new(RowSchema::new(vec![Field::new("id", ValueType::Integer)])),
+            vec![Value::Int(id)],
+        )
+    }
+
+    #[test]
+    fn sql_identifier_policy_rejects_injection_tokens() {
+        assert!(validate_sql_identifier("events").is_ok());
+        assert!(validate_sql_identifier("events; DROP TABLE users").is_err());
+        assert!(validate_sql_identifier("1events").is_err());
+    }
+
+    #[tokio::test]
+    async fn network_policy_blocks_remote_database_before_connect() {
+        let mut output = TableOutput::new(TableOutputConfig {
+            connection_url: "postgres://user:pass@example.invalid/db".into(),
+            table: "events".into(),
+            mode: WriteMode::Insert,
+            batch_size: 0,
+        });
+        let mut context = ExecutionContext::new();
+        context.set_network_allowed(false);
+        let error = output.open(&context).await.unwrap_err();
+        assert!(error.to_string().contains("Network access disabled"));
+    }
+
+    #[tokio::test]
+    async fn sqlite_commit_at_close_persists_all_rows() {
+        sqlx::any::install_default_drivers();
+        let db = NamedTempFile::new().unwrap();
+        let url = format!("sqlite://{}", db.path().display());
+        let pool = AnyPool::connect(&url).await.unwrap();
+        sqlx::query("CREATE TABLE events (id INTEGER NOT NULL)")
+            .execute(&pool)
+            .await
+            .unwrap();
+        pool.close().await;
+
+        let mut output = TableOutput::new(TableOutputConfig {
+            connection_url: url.clone(),
+            table: "events".into(),
+            mode: WriteMode::Insert,
+            batch_size: 0,
+        });
+        output.open(&ExecutionContext::new()).await.unwrap();
+        output.process(row(1)).await.unwrap();
+        output.process(row(2)).await.unwrap();
+        output.close().await.unwrap();
+
+        let verify = AnyPool::connect(&url).await.unwrap();
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM events")
+            .fetch_one(&verify)
+            .await
+            .unwrap();
+        assert_eq!(count, 2);
+        verify.close().await;
     }
 }

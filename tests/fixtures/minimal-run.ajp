@@ -1,0 +1,35 @@
+{
+  "format": "ajisai.pipeline",
+  "format_version": 1,
+  "name": "minimal-run",
+  "nodes": [
+    {
+      "id": "generate",
+      "type_name": "GenerateRows",
+      "label": "Generate",
+      "pos": [0.0, 0.0],
+      "config": {
+        "fields": [
+          { "name": "id", "type": "integer", "value": "${ROW_NR}" },
+          { "name": "label", "type": "string", "value": "hello" }
+        ],
+        "limit": 3
+      }
+    },
+    {
+      "id": "write",
+      "type_name": "CsvFileOutput",
+      "label": "Write CSV",
+      "pos": [240.0, 0.0],
+      "config": {
+        "filename": "${OUTPUT_FILE}",
+        "delimiter": ",",
+        "header_present": true,
+        "append": false
+      }
+    }
+  ],
+  "edges": [
+    { "from": "generate", "to": "write" }
+  ]
+}

@@ -1,8 +1,8 @@
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Row, RowSchema},
-    AjisaiError, Transform,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -31,6 +31,8 @@ pub struct CsvFileOutput {
     config: CsvFileOutputConfig,
     writer: Option<Mutex<csv::Writer<std::fs::File>>>,
     headers_written: bool,
+    target_path: Option<std::path::PathBuf>,
+    temporary_path: Option<std::path::PathBuf>,
 }
 
 impl CsvFileOutput {
@@ -39,6 +41,8 @@ impl CsvFileOutput {
             config,
             writer: None,
             headers_written: false,
+            target_path: None,
+            temporary_path: None,
         }
     }
 
@@ -46,6 +50,14 @@ impl CsvFileOutput {
         let config: CsvFileOutputConfig =
             serde_json::from_value(value).map_err(|e| AjisaiError::Config(e.to_string()))?;
         Ok(Box::new(Self::new(config)))
+    }
+}
+
+impl Drop for CsvFileOutput {
+    fn drop(&mut self) {
+        if let Some(temp_path) = self.temporary_path.take() {
+            let _ = std::fs::remove_file(temp_path);
+        }
     }
 }
 
@@ -61,6 +73,13 @@ impl Transform for CsvFileOutput {
 
     async fn open(&mut self, ctx: &ExecutionContext) -> Result<()> {
         let filename = ctx.resolve(&self.config.filename);
+        let filename = if let Some(root) = ctx.project_root() {
+            crate::utils::resolve_path_in_root(root, &filename)?
+                .to_string_lossy()
+                .into_owned()
+        } else {
+            filename
+        };
         debug!("CsvFileOutput opening '{}'", filename);
 
         // Reject path traversal attempts
@@ -71,13 +90,24 @@ impl Transform for CsvFileOutput {
             return Err(AjisaiError::Config("Path traversal not allowed".into()));
         }
 
+        let target_path = std::path::PathBuf::from(&filename);
+        let temporary_path = if self.config.append {
+            None
+        } else {
+            Some(std::path::PathBuf::from(format!(
+                "{}.ajisai-tmp-{}",
+                filename,
+                std::process::id()
+            )))
+        };
+        let write_path = temporary_path.as_ref().unwrap_or(&target_path);
         let file = if self.config.append {
             std::fs::OpenOptions::new()
                 .create(true)
                 .append(true)
-                .open(&filename)
+                .open(write_path)
         } else {
-            std::fs::File::create(&filename).map(|f| f)
+            std::fs::File::create(write_path)
         }
         .map_err(AjisaiError::Io)?;
 
@@ -86,6 +116,8 @@ impl Transform for CsvFileOutput {
             .from_writer(file);
 
         self.writer = Some(Mutex::new(writer));
+        self.target_path = Some(target_path);
+        self.temporary_path = temporary_path;
         Ok(())
     }
 
@@ -120,6 +152,44 @@ impl Transform for CsvFileOutput {
             let mut writer = writer_mutex.into_inner().unwrap();
             writer.flush().map_err(AjisaiError::Io)?;
         }
+        if let Some(temp_path) = self.temporary_path.take() {
+            let target_path = self
+                .target_path
+                .take()
+                .ok_or_else(|| AjisaiError::Pipeline("CSV output target missing".into()))?;
+            std::fs::rename(temp_path, target_path).map_err(AjisaiError::Io)?;
+        }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ajisai_core::value::{Field, Value, ValueType};
+    use std::sync::Arc;
+    use tempfile::NamedTempFile;
+
+    fn row() -> Row {
+        let schema = Arc::new(RowSchema::new(vec![Field::new("value", ValueType::String)]));
+        Row::new(schema, vec![Value::Str("pending".into())])
+    }
+
+    #[tokio::test]
+    async fn drop_removes_uncommitted_temporary_file() {
+        let target = NamedTempFile::new().unwrap();
+        let path = target.path().display().to_string();
+        let temporary = format!("{path}.ajisai-tmp-{}", std::process::id());
+        let mut output = CsvFileOutput::new(CsvFileOutputConfig {
+            filename: path,
+            delimiter: ',',
+            header_present: true,
+            append: false,
+        });
+        output.open(&ExecutionContext::new()).await.unwrap();
+        output.process(row()).await.unwrap();
+        assert!(std::path::Path::new(&temporary).exists());
+        drop(output);
+        assert!(!std::path::Path::new(&temporary).exists());
     }
 }

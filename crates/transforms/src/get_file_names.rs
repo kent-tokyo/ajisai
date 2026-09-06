@@ -1,9 +1,9 @@
-use crate::utils::resolve_safe_path;
+use crate::utils::{resolve_context_path, resolve_safe_path};
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Field, Row, RowSchema, Value, ValueType},
-    AjisaiError, Transform,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -75,10 +75,10 @@ impl GetFileNames {
                 .unwrap_or("")
                 .to_owned();
 
-            if let Some(re) = pattern {
-                if !re.is_match(&filename) {
-                    continue;
-                }
+            if let Some(re) = pattern
+                && !re.is_match(&filename)
+            {
+                continue;
             }
 
             let filepath = path.to_string_lossy().into_owned();
@@ -122,7 +122,11 @@ impl Transform for GetFileNames {
     }
 
     async fn open(&mut self, ctx: &ExecutionContext) -> Result<()> {
-        self.resolved_dir = Some(ctx.resolve(&self.config.directory));
+        self.resolved_dir = Some(
+            resolve_context_path(ctx, &ctx.resolve(&self.config.directory))?
+                .display()
+                .to_string(),
+        );
         Ok(())
     }
 

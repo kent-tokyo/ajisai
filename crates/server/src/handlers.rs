@@ -1,7 +1,7 @@
-use ajisai_core::{build_and_run, default_config, PipelineState, TRANSFORM_CATEGORIES};
+use ajisai_core::{PipelineState, TRANSFORM_CATEGORIES, build_and_run, default_config};
 use ajisai_hop_compat::load_pipeline_file;
 use ajisai_transforms::default_registry;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::path::PathBuf;
 
 pub async fn ping() -> Value {
@@ -94,14 +94,17 @@ pub fn load_pipeline(path_str: String) -> Result<Value, String> {
                     ps.add_edge(&h.from, &h.to);
                 }
             }
-            serde_json::to_value(&ps)
-                .map_err(|e| format!("Failed to serialize pipeline: {}", e))
+            serde_json::to_value(&ps).map_err(|e| format!("Failed to serialize pipeline: {}", e))
         }
         Err(e) => Err(format!("Failed to load pipeline: {}", e)),
     }
 }
 
-pub fn save_pipeline(pipeline_json: Value, path_str: String, format: String) -> Result<Value, String> {
+pub fn save_pipeline(
+    pipeline_json: Value,
+    path_str: String,
+    format: String,
+) -> Result<Value, String> {
     let _pipeline: PipelineState = serde_json::from_value(pipeline_json)
         .map_err(|e| format!("Failed to deserialize pipeline: {}", e))?;
 
@@ -112,9 +115,7 @@ pub fn save_pipeline(pipeline_json: Value, path_str: String, format: String) -> 
                 .map_err(|e| format!("Failed to write JSON file: {}", e))?;
             Ok(json!({ "path": path_str }))
         }
-        "hpl" => {
-            Err("HPL format export not yet implemented".to_string())
-        }
+        "hpl" => Err("HPL format export not yet implemented".to_string()),
         _ => Err(format!("Unknown format: {}", format)),
     }
 }

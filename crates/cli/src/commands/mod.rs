@@ -1,4 +1,12 @@
+pub mod assess;
+pub mod doctor;
+pub mod explain;
+pub mod inspect;
 pub mod list;
+pub mod migrate;
+pub mod new;
+pub mod preview;
 pub mod run;
 pub mod run_workflow;
+pub mod scan;
 pub mod validate;

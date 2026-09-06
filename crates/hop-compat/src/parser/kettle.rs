@@ -6,8 +6,8 @@
 use crate::model::hop_pipeline::{HopHop, HopPipeline, HopTransform};
 use crate::model::hop_workflow::{HopAction, HopWorkflow, HopWorkflowHop};
 use ajisai_core::AjisaiError;
-use quick_xml::events::Event;
 use quick_xml::Reader;
+use quick_xml::events::Event;
 use std::collections::HashMap;
 
 // ── .ktr parser ──────────────────────────────────────────────────────────────
@@ -66,7 +66,7 @@ pub fn parse_ktr(xml: &str) -> Result<HopPipeline, AjisaiError> {
 
             Ok(Event::Text(e)) => {
                 current_text = e
-                    .unescape()
+                    .decode()
                     .map_err(|e| AjisaiError::Parse(e.to_string()))?
                     .into_owned();
             }
@@ -77,35 +77,31 @@ pub fn parse_ktr(xml: &str) -> Result<HopPipeline, AjisaiError> {
                 let depth = stack.len();
 
                 // Pipeline-level name
-                if depth == 2 && tag == "name" {
-                    if stack
+                if depth == 2
+                    && tag == "name"
+                    && stack
                         .first()
                         .map(|s| s == "transformation")
                         .unwrap_or(false)
-                    {
-                        pipeline.name = text.clone();
-                    }
+                {
+                    pipeline.name = text.clone();
                 }
 
                 // Step fields
-                if let Some(ref mut t) = current_step {
-                    if in_context(&stack, "step") {
-                        match tag.as_str() {
-                            "name" if !in_gui => t.name = text.clone(),
-                            "type" => {
-                                t.type_name = map_kettle_step_type(&text).to_owned();
-                            }
-                            "description" => t.description = Some(text.clone()),
-                            "xloc" if in_gui => t.xloc = text.parse().ok(),
-                            "yloc" if in_gui => t.yloc = text.parse().ok(),
-                            other if !in_gui && depth > 2 && !text.is_empty() => {
-                                t.attributes.insert(
-                                    other.to_owned(),
-                                    serde_json::Value::String(text.clone()),
-                                );
-                            }
-                            _ => {}
+                if let Some(ref mut t) = current_step
+                    && in_context(&stack, "step")
+                {
+                    match tag.as_str() {
+                        "name" if !in_gui => t.name = text.clone(),
+                        "type" => t.type_name = map_kettle_step_type(&text).to_owned(),
+                        "description" => t.description = Some(text.clone()),
+                        "xloc" if in_gui => t.xloc = text.parse().ok(),
+                        "yloc" if in_gui => t.yloc = text.parse().ok(),
+                        other if !in_gui && depth > 2 && !text.is_empty() => {
+                            t.attributes
+                                .insert(other.to_owned(), serde_json::Value::String(text.clone()));
                         }
+                        _ => {}
                     }
                 }
 
@@ -236,7 +232,7 @@ pub fn parse_kjb(xml: &str) -> Result<HopWorkflow, AjisaiError> {
 
             Ok(Event::Text(e)) => {
                 current_text = e
-                    .unescape()
+                    .decode()
                     .map_err(|e| AjisaiError::Parse(e.to_string()))?
                     .into_owned();
             }
@@ -247,28 +243,25 @@ pub fn parse_kjb(xml: &str) -> Result<HopWorkflow, AjisaiError> {
                 let depth = stack.len();
 
                 // Workflow-level name
-                if depth == 2 && tag == "name" {
-                    if stack.first().map(|s| s == "job").unwrap_or(false) {
-                        workflow.name = text.clone();
-                    }
+                if depth == 2 && tag == "name" && stack.first().map(|s| s == "job").unwrap_or(false)
+                {
+                    workflow.name = text.clone();
                 }
 
                 // Entry fields
-                if let Some(ref mut a) = current_action {
-                    if in_context(&stack, "entry") {
-                        match tag.as_str() {
-                            "name" if !in_gui => a.name = text.clone(),
-                            "type" => a.type_name = map_kjb_entry_type(&text).to_owned(),
-                            "xloc" if in_gui => a.xloc = text.parse().ok(),
-                            "yloc" if in_gui => a.yloc = text.parse().ok(),
-                            other if !in_gui && depth > 2 && !text.is_empty() => {
-                                a.attributes.insert(
-                                    other.to_owned(),
-                                    serde_json::Value::String(text.clone()),
-                                );
-                            }
-                            _ => {}
+                if let Some(ref mut a) = current_action
+                    && in_context(&stack, "entry")
+                {
+                    match tag.as_str() {
+                        "name" if !in_gui => a.name = text.clone(),
+                        "type" => a.type_name = map_kjb_entry_type(&text).to_owned(),
+                        "xloc" if in_gui => a.xloc = text.parse().ok(),
+                        "yloc" if in_gui => a.yloc = text.parse().ok(),
+                        other if !in_gui && depth > 2 && !text.is_empty() => {
+                            a.attributes
+                                .insert(other.to_owned(), serde_json::Value::String(text.clone()));
                         }
+                        _ => {}
                     }
                 }
 

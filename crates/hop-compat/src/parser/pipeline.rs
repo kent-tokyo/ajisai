@@ -1,7 +1,7 @@
 use crate::model::hop_pipeline::{HopHop, HopPipeline, HopTransform};
 use ajisai_core::AjisaiError;
-use quick_xml::events::Event;
 use quick_xml::Reader;
+use quick_xml::events::Event;
 use std::collections::HashMap;
 
 /// Parse a .hpl file from a string into a HopPipeline intermediate representation
@@ -47,7 +47,7 @@ pub fn parse_hpl(xml: &str) -> Result<HopPipeline, AjisaiError> {
 
             Ok(Event::Text(e)) => {
                 current_text = e
-                    .unescape()
+                    .decode()
                     .map_err(|e| AjisaiError::Parse(e.to_string()))?
                     .into_owned();
             }
@@ -58,44 +58,44 @@ pub fn parse_hpl(xml: &str) -> Result<HopPipeline, AjisaiError> {
                 let depth = stack.len();
 
                 // Pipeline-level fields
-                if depth == 2 && stack.first().map(|s| s == "pipeline").unwrap_or(false) {
+                if ((depth == 2 && stack.first().map(|s| s == "pipeline").unwrap_or(false))
+                    || (depth == 3
+                        && stack.first().map(|s| s == "pipeline").unwrap_or(false)
+                        && stack.get(1).map(|s| s == "info").unwrap_or(false)))
+                    && tag == "name"
+                {
+                    pipeline.name = text.clone();
+                }
+
+                // Transform fields
+                if let Some(ref mut t) = current_transform
+                    && in_context(&stack, "transform")
+                {
                     match tag.as_str() {
-                        "name" => pipeline.name = text.clone(),
+                        "name" => t.name = text.clone(),
+                        "type" => t.type_name = text.clone(),
+                        "description" => t.description = Some(text.clone()),
+                        "xloc" => t.xloc = text.parse().ok(),
+                        "yloc" => t.yloc = text.parse().ok(),
+                        // Everything else becomes an attribute
+                        other if depth > 2 && !text.is_empty() => {
+                            t.attributes
+                                .insert(other.to_owned(), serde_json::Value::String(text.clone()));
+                        }
                         _ => {}
                     }
                 }
 
-                // Transform fields
-                if let Some(ref mut t) = current_transform {
-                    if in_context(&stack, "transform") {
-                        match tag.as_str() {
-                            "name" => t.name = text.clone(),
-                            "type" => t.type_name = text.clone(),
-                            "description" => t.description = Some(text.clone()),
-                            "xloc" => t.xloc = text.parse().ok(),
-                            "yloc" => t.yloc = text.parse().ok(),
-                            // Everything else becomes an attribute
-                            other if depth > 2 && !text.is_empty() => {
-                                t.attributes.insert(
-                                    other.to_owned(),
-                                    serde_json::Value::String(text.clone()),
-                                );
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-
                 // Hop fields
-                if let Some(ref mut h) = current_hop {
-                    if in_context(&stack, "order") {
-                        match tag.as_str() {
-                            "from" => h.from = text.clone(),
-                            "to" => h.to = text.clone(),
-                            "enabled" => h.enabled = Some(text == "Y" || text == "true"),
-                            "error_hop" => h.error_hop = Some(text == "Y" || text == "true"),
-                            _ => {}
-                        }
+                if let Some(ref mut h) = current_hop
+                    && in_context(&stack, "order")
+                {
+                    match tag.as_str() {
+                        "from" => h.from = text.clone(),
+                        "to" => h.to = text.clone(),
+                        "enabled" => h.enabled = Some(text == "Y" || text == "true"),
+                        "error_hop" => h.error_hop = Some(text == "Y" || text == "true"),
+                        _ => {}
                     }
                 }
 
@@ -264,6 +264,29 @@ fn build_transform_config(ht: &HopTransform) -> serde_json::Value {
     // Merge remaining attributes
     for (k, v) in &ht.attributes {
         map.entry(k.clone()).or_insert_with(|| v.clone());
+    }
+
+    // Compact compatibility form used by portable fixtures and migration tools.
+    // Native Hop exports may use richer condition XML; those remain explicit work.
+    if ht.type_name == "FilterRows"
+        && let (Some(field), Some(value)) = (
+            ht.attributes
+                .get("condition_field")
+                .and_then(|v| v.as_str()),
+            ht.attributes
+                .get("condition_value")
+                .and_then(|v| v.as_str()),
+        )
+    {
+        let op = ht
+            .attributes
+            .get("condition_operator")
+            .and_then(|v| v.as_str())
+            .unwrap_or("eq");
+        map.insert(
+            "condition".into(),
+            serde_json::json!({"op": op, "field": field, "value": value}),
+        );
     }
 
     serde_json::Value::Object(map)

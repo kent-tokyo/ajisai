@@ -1,0 +1,25 @@
+{
+  "format": "ajisai.pipeline",
+  "format_version": 1,
+  "name": "minimal",
+  "nodes": [
+    {
+      "id": "source",
+      "type_name": "Dummy",
+      "label": "Source",
+      "pos": [0.0, 0.0],
+      "config": {}
+    },
+    {
+      "id": "sink",
+      "type_name": "Dummy",
+      "label": "Sink",
+      "pos": [240.0, 0.0],
+      "config": {}
+    }
+  ],
+  "edges": [
+    { "from": "source", "to": "sink", "is_error": false }
+  ],
+  "future_feature": { "enabled": true }
+}

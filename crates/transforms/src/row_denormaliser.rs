@@ -1,8 +1,8 @@
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Field, Row, RowSchema, Value, ValueType},
-    AjisaiError, Transform,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -10,16 +10,12 @@ use std::{collections::HashMap, sync::Arc};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum DenormAggregate {
+    #[default]
     First,
     Last,
     Sum,
-}
-
-impl Default for DenormAggregate {
-    fn default() -> Self {
-        DenormAggregate::First
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

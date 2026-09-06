@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+> Entries below describe the pre-reset implementation history. Current
+> rebuild status, claims, and release gates are maintained in [`ROADMAP.md`](ROADMAP.md)
+> Target stable release: **v2.0.0**. The current workspace baseline remains **0.1.0** until every release gate passes.
+> See [`docs/release/candidate-checklist.md`](docs/release/candidate-checklist.md).
+
+## Unreleased (candidate work)
+
+- Added `ajisai-cli run --json`, a versioned success envelope containing row statistics and structured execution events.
+- Consolidated current documentation around `ROADMAP.md` and the candidate checklist.
+
 ## [0.3.0] - 2026-06-09
 
 ### Phase 9: UI Polish - COMPLETE ✅

@@ -1,12 +1,19 @@
+pub mod compatibility;
 pub mod model;
 pub mod parser;
+pub mod project_scan;
 
+pub use compatibility::{
+    CompatibilityStatus, HopCompatibilityReport, TransformAssessment, WorkflowAssessment,
+    assess_pipeline, assess_workflow,
+};
 pub use model::{HopHop, HopPipeline, HopPipelineInfo, HopTransform, HopWorkflow};
 pub use parser::{
     hop_pipeline_to_ajisai, hop_workflow_to_ajisai, map_transform_type, parse_hpl, parse_hwf,
 };
 pub use parser::{parse_dtsx, parse_kjb, parse_ktr};
 pub use parser::{write_hpl, write_hpl_file};
+pub use project_scan::{ProjectFile, ProjectScanReport, WorkflowInventory, scan_project};
 
 use ajisai_core::AjisaiError;
 

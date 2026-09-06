@@ -1,7 +1,7 @@
 use crate::model::hop_workflow::{HopAction, HopWorkflow, HopWorkflowHop};
 use ajisai_core::AjisaiError;
-use quick_xml::events::Event;
 use quick_xml::Reader;
+use quick_xml::events::Event;
 
 /// Parse a .hwf file from a string
 pub fn parse_hwf(xml: &str) -> Result<HopWorkflow, AjisaiError> {
@@ -46,7 +46,7 @@ pub fn parse_hwf(xml: &str) -> Result<HopWorkflow, AjisaiError> {
 
             Ok(Event::Text(e)) => {
                 current_text = e
-                    .unescape()
+                    .decode()
                     .map_err(|e| AjisaiError::Parse(e.to_string()))?
                     .into_owned();
             }
@@ -56,10 +56,8 @@ pub fn parse_hwf(xml: &str) -> Result<HopWorkflow, AjisaiError> {
                 let text = current_text.trim().to_owned();
                 let depth = stack.len();
 
-                if depth == 2 {
-                    if tag == "name" {
-                        workflow.name = text.clone();
-                    }
+                if depth == 2 && tag == "name" {
+                    workflow.name = text.clone();
                 }
 
                 if let Some(ref mut a) = current_action {

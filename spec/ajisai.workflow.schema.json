@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ajisai.dev/schema/ajisai.workflow-1.json",
+  "title": "Ajisai Native Workflow",
+  "type": "object",
+  "required": ["format", "format_version", "name", "actions", "hops"],
+  "properties": {
+    "format": {"const": "ajisai.workflow"},
+    "format_version": {"const": 1},
+    "name": {"type": "string", "minLength": 1},
+    "actions": {"type": "array", "items": {"$ref": "#/$defs/action"}},
+    "hops": {"type": "array", "items": {"$ref": "#/$defs/hop"}}
+  },
+  "$defs": {
+    "action": {
+      "type": "object",
+      "required": ["id", "type", "config"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "type": {"type": "string", "minLength": 1},
+        "config": {}
+      },
+      "additionalProperties": true
+    },
+    "hop": {
+      "type": "object",
+      "required": ["from", "to"],
+      "properties": {
+        "from": {"type": "string", "minLength": 1},
+        "to": {"type": "string", "minLength": 1},
+        "evaluation": {"enum": ["success", "failure", "unconditional"], "default": "unconditional"},
+        "unconditional": {"type": "boolean", "default": false}
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

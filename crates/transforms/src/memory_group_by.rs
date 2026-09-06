@@ -1,8 +1,8 @@
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Field, Row, RowSchema, Value, ValueType},
-    AjisaiError, Transform,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -83,23 +83,23 @@ impl Accumulator {
                 }
             }
             Accumulator::Min(m) => {
-                if let Some(v) = val {
-                    if !v.is_null() {
-                        *m = Some(match m.take() {
-                            None => v.clone(),
-                            Some(cur) => min_value(cur, v.clone()),
-                        });
-                    }
+                if let Some(v) = val
+                    && !v.is_null()
+                {
+                    *m = Some(match m.take() {
+                        None => v.clone(),
+                        Some(cur) => min_value(cur, v.clone()),
+                    });
                 }
             }
             Accumulator::Max(m) => {
-                if let Some(v) = val {
-                    if !v.is_null() {
-                        *m = Some(match m.take() {
-                            None => v.clone(),
-                            Some(cur) => max_value(cur, v.clone()),
-                        });
-                    }
+                if let Some(v) = val
+                    && !v.is_null()
+                {
+                    *m = Some(match m.take() {
+                        None => v.clone(),
+                        Some(cur) => max_value(cur, v.clone()),
+                    });
                 }
             }
             Accumulator::First(f) => {

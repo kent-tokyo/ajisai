@@ -34,6 +34,7 @@ pub mod registry;
 pub mod rest_client;
 pub mod row_denormaliser;
 pub mod row_normaliser;
+#[cfg(feature = "scripting")]
 pub mod script_step;
 pub mod select;
 pub mod set_variable;
@@ -43,7 +44,7 @@ pub mod stream_lookup;
 pub mod string_ops;
 pub mod switch_case;
 pub mod unique_rows;
-mod utils;
+pub mod utils;
 pub mod value_mapper;
 pub mod write_to_file;
 pub mod write_to_log;
@@ -85,6 +86,7 @@ pub use registry::TransformRegistry;
 pub use rest_client::RestClient;
 pub use row_denormaliser::RowDenormaliser;
 pub use row_normaliser::RowNormaliser;
+#[cfg(feature = "scripting")]
 pub use script_step::ScriptStep;
 pub use select::SelectValues;
 pub use set_variable::SetVariable;
@@ -108,201 +110,163 @@ pub fn default_registry() -> TransformRegistry {
 
     reg.register(
         "CsvFileInput",
-        Arc::new(|v| csv::input::CsvFileInput::from_json(v)),
+        Arc::new(csv::input::CsvFileInput::from_json),
     );
     reg.register(
         "CsvFileOutput",
-        Arc::new(|v| csv::output::CsvFileOutput::from_json(v)),
+        Arc::new(csv::output::CsvFileOutput::from_json),
     );
     reg.register(
         "JsonFileInput",
-        Arc::new(|v| json::input::JsonFileInput::from_json(v)),
+        Arc::new(json::input::JsonFileInput::from_json),
     );
     reg.register(
         "JsonFileOutput",
-        Arc::new(|v| json::output::JsonFileOutput::from_json(v)),
+        Arc::new(json::output::JsonFileOutput::from_json),
     );
-    reg.register("FilterRows", Arc::new(|v| filter::FilterRows::from_json(v)));
-    reg.register(
-        "SelectValues",
-        Arc::new(|v| select::SelectValues::from_json(v)),
-    );
-    reg.register("SortRows", Arc::new(|v| sort::SortRows::from_json(v)));
-    reg.register(
-        "AddConstants",
-        Arc::new(|v| constants::AddConstants::from_json(v)),
-    );
-    reg.register(
-        "Deduplicate",
-        Arc::new(|v| deduplicate::Deduplicate::from_json(v)),
-    );
+    reg.register("FilterRows", Arc::new(filter::FilterRows::from_json));
+    reg.register("SelectValues", Arc::new(select::SelectValues::from_json));
+    reg.register("SortRows", Arc::new(sort::SortRows::from_json));
+    reg.register("AddConstants", Arc::new(constants::AddConstants::from_json));
+    reg.register("Deduplicate", Arc::new(deduplicate::Deduplicate::from_json));
     reg.register(
         "StreamLookup",
-        Arc::new(|v| stream_lookup::StreamLookup::from_json(v)),
+        Arc::new(stream_lookup::StreamLookup::from_json),
     );
     reg.register(
         "CalculatorStep",
-        Arc::new(|v| calculator::CalculatorStep::from_json(v)),
+        Arc::new(calculator::CalculatorStep::from_json),
     );
-    reg.register(
-        "MergeJoin",
-        Arc::new(|v| merge_join::MergeJoin::from_json(v)),
-    );
-    reg.register(
-        "TableInput",
-        Arc::new(|v| db::input::TableInput::from_json(v)),
-    );
-    reg.register(
-        "TableOutput",
-        Arc::new(|v| db::output::TableOutput::from_json(v)),
-    );
+    reg.register("MergeJoin", Arc::new(merge_join::MergeJoin::from_json));
+    reg.register("TableInput", Arc::new(db::input::TableInput::from_json));
+    reg.register("TableOutput", Arc::new(db::output::TableOutput::from_json));
     reg.register(
         "DatabaseLookup",
-        Arc::new(|v| db::lookup::DatabaseLookup::from_json(v)),
+        Arc::new(db::lookup::DatabaseLookup::from_json),
     );
-    reg.register("IfNull", Arc::new(|v| if_null::IfNull::from_json(v)));
+    reg.register("IfNull", Arc::new(if_null::IfNull::from_json));
     reg.register(
         "StringOperations",
-        Arc::new(|v| string_ops::StringOperations::from_json(v)),
+        Arc::new(string_ops::StringOperations::from_json),
     );
     reg.register(
         "ReplaceInString",
-        Arc::new(|v| string_ops::ReplaceInString::from_json(v)),
+        Arc::new(string_ops::ReplaceInString::from_json),
     );
     reg.register(
         "ConcatFields",
-        Arc::new(|v| string_ops::ConcatFields::from_json(v)),
+        Arc::new(string_ops::ConcatFields::from_json),
     );
     reg.register(
         "SplitFieldToRows",
-        Arc::new(|v| split_field::SplitFieldToRows::from_json(v)),
+        Arc::new(split_field::SplitFieldToRows::from_json),
     );
     reg.register(
         "AppendStreams",
-        Arc::new(|v| append_streams::AppendStreams::from_json(v)),
+        Arc::new(append_streams::AppendStreams::from_json),
     );
-    reg.register(
-        "WriteToLog",
-        Arc::new(|v| write_to_log::WriteToLog::from_json(v)),
-    );
+    reg.register("WriteToLog", Arc::new(write_to_log::WriteToLog::from_json));
     reg.register(
         "GenerateRows",
-        Arc::new(|v| generate_rows::GenerateRows::from_json(v)),
+        Arc::new(generate_rows::GenerateRows::from_json),
     );
     reg.register(
         "MemoryGroupBy",
-        Arc::new(|v| memory_group_by::MemoryGroupBy::from_json(v)),
+        Arc::new(memory_group_by::MemoryGroupBy::from_json),
     );
-    reg.register(
-        "SwitchCase",
-        Arc::new(|v| switch_case::SwitchCase::from_json(v)),
-    );
+    reg.register("SwitchCase", Arc::new(switch_case::SwitchCase::from_json));
     reg.register(
         "ExcelFileInput",
-        Arc::new(|v| excel_file_input::ExcelFileInput::from_json(v)),
+        Arc::new(excel_file_input::ExcelFileInput::from_json),
     );
     reg.register(
         "ExcelFileOutput",
-        Arc::new(|v| excel_file_output::ExcelFileOutput::from_json(v)),
+        Arc::new(excel_file_output::ExcelFileOutput::from_json),
     );
     reg.register(
         "AddSequence",
-        Arc::new(|v| add_sequence::AddSequence::from_json(v)),
+        Arc::new(add_sequence::AddSequence::from_json),
     );
     reg.register(
         "SetVariable",
-        Arc::new(|v| set_variable::SetVariable::from_json(v)),
+        Arc::new(set_variable::SetVariable::from_json),
     );
     reg.register(
         "GetVariable",
-        Arc::new(|v| get_variable::GetVariable::from_json(v)),
+        Arc::new(get_variable::GetVariable::from_json),
     );
     reg.register(
         "XmlFileInput",
-        Arc::new(|v| xml_file_input::XmlFileInput::from_json(v)),
+        Arc::new(xml_file_input::XmlFileInput::from_json),
     );
     reg.register(
         "XmlFileOutput",
-        Arc::new(|v| xml_file_output::XmlFileOutput::from_json(v)),
+        Arc::new(xml_file_output::XmlFileOutput::from_json),
     );
-    reg.register(
-        "RestClient",
-        Arc::new(|v| rest_client::RestClient::from_json(v)),
-    );
+    reg.register("RestClient", Arc::new(rest_client::RestClient::from_json));
     reg.register(
         "ParquetFileInput",
-        Arc::new(|v| parquet_file_input::ParquetFileInput::from_json(v)),
+        Arc::new(parquet_file_input::ParquetFileInput::from_json),
     );
     reg.register(
         "ParquetFileOutput",
-        Arc::new(|v| parquet_file_output::ParquetFileOutput::from_json(v)),
+        Arc::new(parquet_file_output::ParquetFileOutput::from_json),
     );
     reg.register(
         "RowNormaliser",
-        Arc::new(|v| row_normaliser::RowNormaliser::from_json(v)),
+        Arc::new(row_normaliser::RowNormaliser::from_json),
     );
     reg.register(
         "RowDenormaliser",
-        Arc::new(|v| row_denormaliser::RowDenormaliser::from_json(v)),
+        Arc::new(row_denormaliser::RowDenormaliser::from_json),
     );
     reg.register(
         "GetFileNames",
-        Arc::new(|v| get_file_names::GetFileNames::from_json(v)),
+        Arc::new(get_file_names::GetFileNames::from_json),
     );
     reg.register(
         "LoadFileContent",
-        Arc::new(|v| load_file_content::LoadFileContent::from_json(v)),
+        Arc::new(load_file_content::LoadFileContent::from_json),
     );
     reg.register(
         "WriteToFile",
-        Arc::new(|v| write_to_file::WriteToFile::from_json(v)),
+        Arc::new(write_to_file::WriteToFile::from_json),
     );
-    reg.register("Dummy", Arc::new(|v| dummy::Dummy::from_json(v)));
-    reg.register("Abort", Arc::new(|v| abort::Abort::from_json(v)));
-    reg.register(
-        "RegexEval",
-        Arc::new(|v| regex_eval::RegexEval::from_json(v)),
-    );
-    reg.register("CloneRow", Arc::new(|v| clone_row::CloneRow::from_json(v)));
+    reg.register("Dummy", Arc::new(dummy::Dummy::from_json));
+    reg.register("Abort", Arc::new(abort::Abort::from_json));
+    reg.register("RegexEval", Arc::new(regex_eval::RegexEval::from_json));
+    reg.register("CloneRow", Arc::new(clone_row::CloneRow::from_json));
     reg.register(
         "FieldSplitter",
-        Arc::new(|v| field_splitter::FieldSplitter::from_json(v)),
+        Arc::new(field_splitter::FieldSplitter::from_json),
     );
-    reg.register(
-        "UniqueRows",
-        Arc::new(|v| unique_rows::UniqueRows::from_json(v)),
-    );
+    reg.register("UniqueRows", Arc::new(unique_rows::UniqueRows::from_json));
     reg.register(
         "NumberRange",
-        Arc::new(|v| number_range::NumberRange::from_json(v)),
+        Arc::new(number_range::NumberRange::from_json),
     );
     reg.register(
         "ValueMapper",
-        Arc::new(|v| value_mapper::ValueMapper::from_json(v)),
+        Arc::new(value_mapper::ValueMapper::from_json),
     );
-    reg.register(
-        "ExecuteSQL",
-        Arc::new(|v| execute_sql::ExecuteSQL::from_json(v)),
-    );
-    reg.register(
-        "ScriptStep",
-        Arc::new(|v| script_step::ScriptStep::from_json(v)),
-    );
+    reg.register("ExecuteSQL", Arc::new(execute_sql::ExecuteSQL::from_json));
+    #[cfg(feature = "scripting")]
+    reg.register("ScriptStep", Arc::new(script_step::ScriptStep::from_json));
     reg.register(
         "PipelineExecutor",
-        Arc::new(|v| pipeline_executor::PipelineExecutor::from_json(v)),
+        Arc::new(pipeline_executor::PipelineExecutor::from_json),
     );
     reg.register(
         "JsonFieldInput",
-        Arc::new(|v| json_field_input::JsonFieldInput::from_json(v)),
+        Arc::new(json_field_input::JsonFieldInput::from_json),
     );
     reg.register(
         "JsonFieldOutput",
-        Arc::new(|v| json_field_output::JsonFieldOutput::from_json(v)),
+        Arc::new(json_field_output::JsonFieldOutput::from_json),
     );
     reg.register(
         "AnalyticQuery",
-        Arc::new(|v| analytic_query::AnalyticQuery::from_json(v)),
+        Arc::new(analytic_query::AnalyticQuery::from_json),
     );
 
     reg

@@ -1,26 +1,23 @@
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Row, RowSchema, Value},
-    AjisaiError, Transform,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::io::Write as IoWrite;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum JsonOutputFormat {
     /// Write all rows as a JSON array
+    #[default]
     Array,
     /// One JSON object per line (JSONL / NDJSON)
     Lines,
-}
-
-impl Default for JsonOutputFormat {
-    fn default() -> Self {
-        JsonOutputFormat::Array
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,6 +39,8 @@ pub struct JsonFileOutput {
     file: Option<std::fs::File>,
     started: bool,
     resolved_filename: Option<String>,
+    target_path: Option<PathBuf>,
+    temporary_path: Option<PathBuf>,
 }
 
 impl JsonFileOutput {
@@ -52,6 +51,8 @@ impl JsonFileOutput {
             file: None,
             started: false,
             resolved_filename: None,
+            target_path: None,
+            temporary_path: None,
         }
     }
 
@@ -102,9 +103,12 @@ impl Transform for JsonFileOutput {
         }
 
         self.resolved_filename = Some(filename.clone());
-
-        let f = std::fs::File::create(&filename).map_err(AjisaiError::Io)?;
+        let target = PathBuf::from(&filename);
+        let temporary = PathBuf::from(format!("{}.ajisai-tmp-{}", filename, std::process::id()));
+        let f = std::fs::File::create(&temporary).map_err(AjisaiError::Io)?;
         self.file = Some(f);
+        self.target_path = Some(target);
+        self.temporary_path = Some(temporary);
         self.started = false;
 
         if matches!(self.config.format, JsonOutputFormat::Array) {
@@ -151,19 +155,81 @@ impl Transform for JsonFileOutput {
                 }
                 .map_err(|e| AjisaiError::Pipeline(e.to_string()))?;
 
-                // Overwrite with the full array (we wrote "[" in open())
-                // Re-open and write the complete JSON
-                let filename = self
-                    .resolved_filename
-                    .clone()
-                    .unwrap_or_else(|| self.config.filename.clone());
+                let temporary = self.temporary_path.as_ref().ok_or_else(|| {
+                    AjisaiError::Pipeline("JsonFileOutput temporary path missing".into())
+                })?;
                 drop(self.file.take());
-                std::fs::write(&filename, json).map_err(AjisaiError::Io)?;
+                std::fs::write(temporary, json).map_err(AjisaiError::Io)?;
             } else {
                 f.flush().map_err(AjisaiError::Io)?;
                 self.file = None;
             }
+            let target = self.target_path.as_ref().ok_or_else(|| {
+                AjisaiError::Pipeline("JsonFileOutput target path missing".into())
+            })?;
+            let temporary = self.temporary_path.as_ref().ok_or_else(|| {
+                AjisaiError::Pipeline("JsonFileOutput temporary path missing".into())
+            })?;
+            std::fs::rename(temporary, target).map_err(AjisaiError::Io)?;
+            self.temporary_path = None;
         }
         Ok(())
+    }
+}
+
+impl Drop for JsonFileOutput {
+    fn drop(&mut self) {
+        if let Some(path) = self.temporary_path.take() {
+            let _ = std::fs::remove_file(path);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ajisai_core::value::{Field, ValueType};
+    use std::sync::Arc;
+    use tempfile::NamedTempFile;
+
+    fn row() -> Row {
+        Row::new(
+            Arc::new(RowSchema::new(vec![Field::new("id", ValueType::Integer)])),
+            vec![Value::Int(7)],
+        )
+    }
+
+    #[tokio::test]
+    async fn commits_json_array_atomically() {
+        let target = NamedTempFile::new().unwrap();
+        let path = target.path().display().to_string();
+        let temporary = format!("{path}.ajisai-tmp-{}", std::process::id());
+        let mut output = JsonFileOutput::new(JsonFileOutputConfig {
+            filename: path.clone(),
+            format: JsonOutputFormat::Array,
+            pretty: false,
+        });
+        output.open(&ExecutionContext::new()).await.unwrap();
+        output.process(row()).await.unwrap();
+        output.close().await.unwrap();
+        assert!(!std::path::Path::new(&temporary).exists());
+        assert_eq!(std::fs::read_to_string(path).unwrap(), "[{\"id\":7}]");
+    }
+
+    #[tokio::test]
+    async fn drop_removes_uncommitted_json_output() {
+        let target = NamedTempFile::new().unwrap();
+        let path = target.path().display().to_string();
+        let temporary = format!("{path}.ajisai-tmp-{}", std::process::id());
+        let mut output = JsonFileOutput::new(JsonFileOutputConfig {
+            filename: path,
+            format: JsonOutputFormat::Lines,
+            pretty: false,
+        });
+        output.open(&ExecutionContext::new()).await.unwrap();
+        output.process(row()).await.unwrap();
+        assert!(std::path::Path::new(&temporary).exists());
+        drop(output);
+        assert!(!std::path::Path::new(&temporary).exists());
     }
 }

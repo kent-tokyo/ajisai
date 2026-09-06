@@ -25,6 +25,22 @@ jobs:
       - name: Build Rust server
         run: cargo build --release --bin ajisai-server
 
+      - name: Build standalone CLI
+        run: cargo build --release --bin ajisai-cli
+
+      - name: Smoke test standalone CLI (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          ./target/release/ajisai-cli --version
+          ./target/release/ajisai-cli doctor --json
+
+      - name: Smoke test standalone CLI (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          .\target\release\ajisai-cli.exe --version
+          .\target\release\ajisai-cli.exe doctor --json
+
       - name: Install Electron dependencies
         working-directory: electron
         run: npm ci
@@ -39,18 +55,63 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ajisai-${{ matrix.os }}
-          path: electron/dist/*
+          path: |
+            electron/dist/*
+            target/release/ajisai-cli*
 
   create-release:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Rust for reproducibility metadata
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-deny
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+
+      - name: Audit release dependency graph
+        run: cargo deny check advisories licenses sources
+
+      - name: Generate locked dependency manifest
+        run: cargo metadata --locked --format-version 1 > ajisai-cargo-metadata.json
+
+      - name: Generate CycloneDX SBOM
+        run: python3 scripts/generate-sbom.py --output ajisai-sbom.cdx.json
+
+      - name: Generate build provenance metadata
+        run: python3 scripts/generate-build-info.py --output ajisai-build-info.json
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: release-artifacts
+
+      - name: Archive metadata and generate checksums
+        shell: bash
+        run: |
+          cp ajisai-cargo-metadata.json release-artifacts/ajisai-cargo-metadata.json
+          cp ajisai-sbom.cdx.json release-artifacts/ajisai-sbom.cdx.json
+          cp ajisai-build-info.json release-artifacts/ajisai-build-info.json
+          find release-artifacts -type f -print0 | sort -z | xargs -0 sha256sum > release-artifacts/SHA256SUMS
+
+      - name: Verify release artifacts independently
+        run: python3 scripts/verify-release-artifacts.py release-artifacts
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3.7.0
+
+      - name: Sign release checksums with Sigstore
+        run: |
+          cosign sign-blob --yes \
+            --bundle release-artifacts/SHA256SUMS.sigstore.json \
+            release-artifacts/SHA256SUMS
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -60,3 +121,17 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  container-smoke:
+    name: Container build and JSON-RPC smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build pinned container
+        run: docker build --pull --tag ajisai:release-candidate .
+      - name: Ping container over stdin/stdout
+        shell: bash
+        run: |
+          response="$(printf '%s\n' '{"id":1,"method":"ping"}' | docker run --rm -i --read-only --tmpfs /tmp:rw,noexec,nosuid ajisai:release-candidate)"
+          echo "$response"
+          echo "$response" | grep -F '"pong":true'

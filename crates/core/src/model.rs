@@ -167,6 +167,8 @@ impl Node {
 pub struct Edge {
     pub from: String,
     pub to: String,
+    #[serde(default)]
+    pub is_error: bool,
 }
 
 /// The full pipeline editor state (serializable → save/load as JSON)
@@ -203,6 +205,7 @@ impl PipelineState {
         let e = Edge {
             from: from.into(),
             to: to.into(),
+            is_error: false,
         };
         if !self.edges.contains(&e) {
             self.edges.push(e);

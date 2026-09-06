@@ -1,9 +1,9 @@
-use crate::utils::resolve_safe_path;
+use crate::utils::{resolve_context_path, resolve_safe_path};
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Row, RowSchema, ValueType},
-    AjisaiError, Transform,
 };
 use arrow_array::{ArrayRef, BooleanArray, Float64Array, Int64Array, RecordBatch, StringArray};
 use arrow_schema::{Field as ArrowField, Schema};
@@ -12,6 +12,7 @@ use parquet::arrow::ArrowWriter;
 use parquet::basic::Compression;
 use parquet::file::properties::WriterProperties;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,6 +30,7 @@ pub struct ParquetFileOutput {
     config: ParquetFileOutputConfig,
     resolved_path: String,
     buffer: Vec<Row>,
+    temporary_path: Option<PathBuf>,
 }
 
 impl ParquetFileOutput {
@@ -38,6 +40,7 @@ impl ParquetFileOutput {
             config,
             resolved_path,
             buffer: Vec::new(),
+            temporary_path: None,
         }
     }
 
@@ -96,16 +99,13 @@ impl ParquetFileOutput {
                     _ => {
                         let vals: Vec<Option<String>> = (0..n)
                             .map(|r| {
-                                rows[r]
-                                    .get_by_index(col_idx)
-                                    .map(|v| {
-                                        if v.is_null() {
-                                            None
-                                        } else {
-                                            Some(v.to_display_string())
-                                        }
-                                    })
-                                    .flatten()
+                                rows[r].get_by_index(col_idx).and_then(|v| {
+                                    if v.is_null() {
+                                        None
+                                    } else {
+                                        Some(v.to_display_string())
+                                    }
+                                })
                             })
                             .collect();
                         Arc::new(StringArray::from(vals))
@@ -130,7 +130,10 @@ impl Transform for ParquetFileOutput {
     }
 
     async fn open(&mut self, ctx: &ExecutionContext) -> Result<()> {
-        self.resolved_path = ctx.resolve(&self.config.filename);
+        self.resolved_path = resolve_context_path(ctx, &ctx.resolve(&self.config.filename))?
+            .display()
+            .to_string();
+        self.temporary_path = None;
         Ok(())
     }
 
@@ -159,9 +162,16 @@ impl Transform for ParquetFileOutput {
             .build();
 
         let safe_path = resolve_safe_path(&self.resolved_path)?;
+        let temporary = PathBuf::from(format!(
+            "{}.ajisai-tmp-{}",
+            safe_path.display(),
+            std::process::id()
+        ));
+        self.temporary_path = Some(temporary.clone());
         let path_str = self.resolved_path.clone();
+        let temporary_for_writer = temporary.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let file = std::fs::File::create(&safe_path).map_err(|e| {
+            let file = std::fs::File::create(&temporary_for_writer).map_err(|e| {
                 AjisaiError::Config(format!("Cannot create Parquet file '{}': {}", path_str, e))
             })?;
             let mut writer = ArrowWriter::try_new(file, arrow_schema, Some(props))
@@ -177,6 +187,17 @@ impl Transform for ParquetFileOutput {
         .await
         .map_err(|e| AjisaiError::Config(format!("Spawn blocking failed: {}", e)))??;
 
+        std::fs::rename(&temporary, &safe_path).map_err(AjisaiError::Io)?;
+        self.temporary_path = None;
+
         Ok(())
+    }
+}
+
+impl Drop for ParquetFileOutput {
+    fn drop(&mut self) {
+        if let Some(path) = self.temporary_path.take() {
+            let _ = std::fs::remove_file(path);
+        }
     }
 }

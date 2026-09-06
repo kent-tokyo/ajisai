@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "baseline": "ajisai-0.1.0-working-tree",
+  "comparison_oracle": "Apache Hop 2.19.0",
+  "workloads": [
+    {
+      "id": "csv-clean-fixture",
+      "pipeline": "tests/fixtures/full-csv.ajp",
+      "input": "tests/fixtures/input.csv",
+      "expected_output": "tests/fixtures/full-csv.expected.csv",
+      "expected_sha256": "c3d99c137bc7f2d4fd7178e7656554a85e6b7907167bf7010530cdcdd466b7bb",
+      "semantics": "header-preserving CSV; select/rename; age >= 18; overwrite output"
+    }
+  ],
+  "reserved_workload_ids": [
+    "csv-narrow-1m",
+    "csv-wide-1m",
+    "csv-null-heavy-10m",
+    "join-skewed-5m",
+    "mixed-io-1m"
+  ]
+}

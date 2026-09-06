@@ -12,7 +12,7 @@ async fn main() -> std::io::Result<()> {
         .init();
 
     let stdin = std::io::stdin();
-    let mut reader = BufReader::new(stdin.lock());
+    let reader = BufReader::new(stdin.lock());
     let stdout = std::io::stdout();
     let mut writer = stdout.lock();
 
@@ -40,19 +40,25 @@ async fn main() -> std::io::Result<()> {
                         result: Some(get_transforms()),
                         error: None,
                     },
-                    "run_pipeline" => match run_pipeline(req.params.get("pipeline").cloned().unwrap_or_default()).await {
-                        Ok(result) => RpcResponse {
-                            id: req.id,
-                            result: Some(result),
-                            error: None,
-                        },
-                        Err(err) => RpcResponse {
-                            id: req.id,
-                            result: None,
-                            error: Some(RpcError::internal_error(err)),
-                        },
-                    },
-                    "validate_pipeline" => match validate_pipeline(req.params.get("pipeline").cloned().unwrap_or_default()) {
+                    "run_pipeline" => {
+                        match run_pipeline(req.params.get("pipeline").cloned().unwrap_or_default())
+                            .await
+                        {
+                            Ok(result) => RpcResponse {
+                                id: req.id,
+                                result: Some(result),
+                                error: None,
+                            },
+                            Err(err) => RpcResponse {
+                                id: req.id,
+                                result: None,
+                                error: Some(RpcError::internal_error(err)),
+                            },
+                        }
+                    }
+                    "validate_pipeline" => match validate_pipeline(
+                        req.params.get("pipeline").cloned().unwrap_or_default(),
+                    ) {
                         Ok(result) => RpcResponse {
                             id: req.id,
                             result: Some(result),
@@ -65,7 +71,9 @@ async fn main() -> std::io::Result<()> {
                         },
                     },
                     "load_pipeline" => {
-                        let path = req.params.get("path")
+                        let path = req
+                            .params
+                            .get("path")
                             .and_then(|v| v.as_str())
                             .unwrap_or("")
                             .to_string();
@@ -83,11 +91,15 @@ async fn main() -> std::io::Result<()> {
                         }
                     }
                     "save_pipeline" => {
-                        let path = req.params.get("path")
+                        let path = req
+                            .params
+                            .get("path")
                             .and_then(|v| v.as_str())
                             .unwrap_or("")
                             .to_string();
-                        let format = req.params.get("format")
+                        let format = req
+                            .params
+                            .get("format")
                             .and_then(|v| v.as_str())
                             .unwrap_or("json")
                             .to_string();

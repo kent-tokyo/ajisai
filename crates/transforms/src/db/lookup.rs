@@ -1,8 +1,8 @@
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Field, Row, RowSchema, Value, ValueType},
-    AjisaiError, Transform,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -107,7 +107,7 @@ impl Transform for DatabaseLookup {
         };
 
         // Execute parameterised query
-        let db_row_opt = sqlx::query(&self.config.sql)
+        let db_row_opt = sqlx::query(sqlx::AssertSqlSafe(self.config.sql.clone()))
             .bind(key_val)
             .fetch_optional(pool)
             .await

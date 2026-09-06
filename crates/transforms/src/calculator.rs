@@ -1,8 +1,8 @@
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Field, Row, RowSchema, Value, ValueType},
-    AjisaiError, Transform,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -230,12 +230,12 @@ impl Operation {
                 .unwrap_or(Value::Null),
             Operation::ToInteger { field } => row
                 .get(field)
-                .and_then(|v| to_f64(v))
+                .and_then(to_f64)
                 .map(|f| Value::Int(f as i64))
                 .unwrap_or(Value::Null),
             Operation::ToFloat { field } => row
                 .get(field)
-                .and_then(|v| to_f64(v))
+                .and_then(to_f64)
                 .map(Value::Float)
                 .unwrap_or(Value::Null),
             Operation::IfNull { field, default } => match row.get(field) {

@@ -1,0 +1,2 @@
+id,__error_desc,__error_code
+1,Pipeline error: intentional failure,PIPELINE_ERROR

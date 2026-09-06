@@ -1,16 +1,16 @@
-use crate::utils::resolve_safe_path;
+use crate::utils::{resolve_context_path, resolve_safe_path};
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Row, RowSchema, Value},
-    AjisaiError, Transform,
 };
 use async_trait::async_trait;
-use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 use quick_xml::Writer;
+use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 use serde::{Deserialize, Serialize};
 use std::io::BufWriter;
-use std::sync::Arc;
+use std::path::PathBuf;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 
@@ -35,6 +35,7 @@ fn default_row() -> String {
 pub struct XmlFileOutput {
     config: XmlFileOutputConfig,
     rows: Vec<Row>,
+    temporary_path: Option<PathBuf>,
 }
 
 impl XmlFileOutput {
@@ -47,6 +48,7 @@ impl XmlFileOutput {
         Ok(Box::new(Self {
             config,
             rows: Vec::new(),
+            temporary_path: None,
         }))
     }
 }
@@ -61,8 +63,12 @@ impl Transform for XmlFileOutput {
         Ok(input.clone())
     }
 
-    async fn open(&mut self, _ctx: &ExecutionContext) -> Result<()> {
+    async fn open(&mut self, ctx: &ExecutionContext) -> Result<()> {
         self.rows.clear();
+        let resolved = ctx.resolve(&self.config.filename);
+        let safe = resolve_context_path(ctx, &resolved)?;
+        self.config.filename = safe.display().to_string();
+        self.temporary_path = None;
         Ok(())
     }
 
@@ -138,14 +144,34 @@ impl Transform for XmlFileOutput {
                 .map_err(|e| AjisaiError::Io(std::io::Error::other(e.to_string())))?;
         }
 
-        let mut file = File::create(&path).await.map_err(AjisaiError::Io)?;
+        let temporary = PathBuf::from(format!(
+            "{}.ajisai-tmp-{}",
+            path.display(),
+            std::process::id()
+        ));
+        self.temporary_path = Some(temporary.clone());
+        let mut file = File::create(&temporary).await.map_err(AjisaiError::Io)?;
         file.write_all(&buf).await.map_err(AjisaiError::Io)?;
+        file.flush().await.map_err(AjisaiError::Io)?;
+        drop(file);
+        tokio::fs::rename(&temporary, &path)
+            .await
+            .map_err(AjisaiError::Io)?;
+        self.temporary_path = None;
 
         Ok(Vec::new())
     }
 
     async fn close(&mut self) -> Result<()> {
         Ok(())
+    }
+}
+
+impl Drop for XmlFileOutput {
+    fn drop(&mut self) {
+        if let Some(path) = self.temporary_path.take() {
+            let _ = std::fs::remove_file(path);
+        }
     }
 }
 
@@ -179,4 +205,40 @@ fn base64_encode(bytes: &[u8]) -> String {
         );
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ajisai_core::value::{Field, ValueType};
+    use std::sync::Arc;
+    use tempfile::NamedTempFile;
+
+    #[tokio::test]
+    async fn writes_xml_via_atomic_temporary_file() {
+        let target = NamedTempFile::new().unwrap();
+        let path = target.path().display().to_string();
+        let mut output = XmlFileOutput {
+            config: XmlFileOutputConfig {
+                filename: path.clone(),
+                root_element: "rows".into(),
+                row_element: "row".into(),
+                encoding: "UTF-8".into(),
+            },
+            rows: Vec::new(),
+            temporary_path: None,
+        };
+        let schema = Arc::new(RowSchema::new(vec![Field::new("id", ValueType::Integer)]));
+        output.open(&ExecutionContext::new()).await.unwrap();
+        output
+            .process(Row::new(schema, vec![Value::Int(1)]))
+            .await
+            .unwrap();
+        output.flush().await.unwrap();
+        assert!(
+            std::fs::read_to_string(path)
+                .unwrap()
+                .contains("<id>1</id>")
+        );
+    }
 }

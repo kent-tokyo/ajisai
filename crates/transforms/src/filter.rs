@@ -1,8 +1,8 @@
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Row, RowSchema, Value},
-    AjisaiError, Transform,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -108,11 +108,7 @@ impl Transform for FilterRows {
             Some(cond) => cond.evaluate(&row),
             None => true, // no condition = pass all rows
         };
-        if passes {
-            Ok(vec![row])
-        } else {
-            Ok(vec![])
-        }
+        if passes { Ok(vec![row]) } else { Ok(vec![]) }
     }
 
     async fn close(&mut self) -> Result<()> {

@@ -1,8 +1,8 @@
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Field, Row, RowSchema, Value},
-    AjisaiError, Transform,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -11,17 +11,13 @@ use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum JoinType {
+    #[default]
     Inner,
     LeftOuter,
     RightOuter,
     Full,
-}
-
-impl Default for JoinType {
-    fn default() -> Self {
-        JoinType::Inner
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -102,7 +98,7 @@ impl MergeJoin {
             values.extend(r.values.iter().cloned());
         } else {
             let right_len = schema.fields.len() - left.values.len();
-            values.extend(std::iter::repeat(Value::Null).take(right_len));
+            values.extend(std::iter::repeat_n(Value::Null, right_len));
         }
         Row::new(schema, values)
     }
@@ -113,9 +109,7 @@ impl MergeJoin {
         right_values: Vec<Value>,
         schema: Arc<RowSchema>,
     ) -> Row {
-        let mut values: Vec<Value> = std::iter::repeat(Value::Null)
-            .take(left_field_count)
-            .collect();
+        let mut values: Vec<Value> = std::iter::repeat_n(Value::Null, left_field_count).collect();
         values.extend(right_values);
         Row::new(schema, values)
     }

@@ -1,13 +1,14 @@
-use crate::utils::resolve_safe_path;
+use crate::utils::{resolve_context_path, resolve_safe_path};
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Row, RowSchema, Value},
-    AjisaiError, Transform,
 };
 use async_trait::async_trait;
 use rust_xlsxwriter::Workbook;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExcelFileOutputConfig {
@@ -30,6 +31,7 @@ pub struct ExcelFileOutput {
     config: ExcelFileOutputConfig,
     resolved_path: String,
     buffer: Vec<Row>,
+    temporary_path: Option<PathBuf>,
 }
 
 impl ExcelFileOutput {
@@ -39,6 +41,7 @@ impl ExcelFileOutput {
             config,
             resolved_path,
             buffer: Vec::new(),
+            temporary_path: None,
         }
     }
 
@@ -60,7 +63,10 @@ impl Transform for ExcelFileOutput {
     }
 
     async fn open(&mut self, ctx: &ExecutionContext) -> Result<()> {
-        self.resolved_path = ctx.resolve(&self.config.filename);
+        self.resolved_path = resolve_context_path(ctx, &ctx.resolve(&self.config.filename))?
+            .display()
+            .to_string();
+        self.temporary_path = None;
         Ok(())
     }
 
@@ -109,7 +115,7 @@ impl Transform for ExcelFileOutput {
                     }
                     Value::Null => {}
                     other => {
-                        ws.write_string(excel_row, c, &other.to_display_string())
+                        ws.write_string(excel_row, c, other.to_display_string())
                             .map_err(|e| AjisaiError::Config(e.to_string()))?;
                     }
                 }
@@ -118,10 +124,26 @@ impl Transform for ExcelFileOutput {
         }
 
         let safe_path = resolve_safe_path(&self.resolved_path)?;
+        let temporary = PathBuf::from(format!(
+            "{}.ajisai-tmp-{}",
+            safe_path.display(),
+            std::process::id()
+        ));
+        self.temporary_path = Some(temporary.clone());
         workbook
-            .save(&safe_path)
+            .save(&temporary)
             .map_err(|e| AjisaiError::Config(format!("Failed to save Excel file: {}", e)))?;
+        std::fs::rename(&temporary, &safe_path).map_err(AjisaiError::Io)?;
+        self.temporary_path = None;
 
         Ok(())
+    }
+}
+
+impl Drop for ExcelFileOutput {
+    fn drop(&mut self) {
+        if let Some(path) = self.temporary_path.take() {
+            let _ = std::fs::remove_file(path);
+        }
     }
 }

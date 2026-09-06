@@ -1,8 +1,8 @@
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Field, Row, RowSchema, Value, ValueType},
-    AjisaiError, Transform,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -65,7 +65,7 @@ impl SelectValues {
                         "Date" => ValueType::Date,
                         "Timestamp" => ValueType::Timestamp,
                         other => {
-                            return Err(AjisaiError::Config(format!("Unknown type: {}", other)))
+                            return Err(AjisaiError::Config(format!("Unknown type: {}", other)));
                         }
                     }
                 } else {

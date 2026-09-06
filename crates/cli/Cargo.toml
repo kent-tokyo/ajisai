@@ -13,8 +13,11 @@ ajisai-core       = { workspace = true }
 ajisai-transforms = { workspace = true }
 ajisai-hop-compat = { workspace = true }
 clap              = { workspace = true }
+clap_complete     = { workspace = true }
 tokio             = { workspace = true }
 tracing           = { workspace = true }
 tracing-subscriber = { workspace = true }
 rust-i18n         = { workspace = true }
+serde_json       = { workspace = true }
 anyhow            = "1"
+async-trait       = { workspace = true }

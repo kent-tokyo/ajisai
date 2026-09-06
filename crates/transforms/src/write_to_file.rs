@@ -1,9 +1,9 @@
-use crate::utils::resolve_safe_path;
+use crate::utils::resolve_context_path;
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Row, RowSchema},
-    AjisaiError, Transform,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -60,7 +60,7 @@ impl Transform for WriteToFile {
 
     async fn open(&mut self, ctx: &ExecutionContext) -> Result<()> {
         let filename = ctx.resolve(&self.config.filename);
-        let safe_path = resolve_safe_path(&filename)?;
+        let safe_path = resolve_context_path(ctx, &filename)?;
 
         let file = if self.config.append {
             std::fs::OpenOptions::new()
@@ -68,7 +68,7 @@ impl Transform for WriteToFile {
                 .append(true)
                 .open(&safe_path)
         } else {
-            std::fs::File::create(&safe_path).map(|f| f)
+            std::fs::File::create(&safe_path)
         }
         .map_err(AjisaiError::Io)?;
 

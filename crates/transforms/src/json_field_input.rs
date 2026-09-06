@@ -1,8 +1,8 @@
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Field, Row, RowSchema, Value, ValueType},
-    AjisaiError, Transform,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -169,14 +169,14 @@ impl Transform for JsonFieldInput {
             }
         };
 
-        if self.config.expand_array {
-            if let Some(arr) = json_val.as_array() {
-                let rows: Vec<Row> = arr
-                    .iter()
-                    .map(|elem| self.apply_extract(&row, elem, schema.clone()))
-                    .collect();
-                return Ok(rows);
-            }
+        if self.config.expand_array
+            && let Some(arr) = json_val.as_array()
+        {
+            let rows: Vec<Row> = arr
+                .iter()
+                .map(|elem| self.apply_extract(&row, elem, schema.clone()))
+                .collect();
+            return Ok(rows);
         }
 
         Ok(vec![self.apply_extract(&row, &json_val, schema)])

@@ -1,8 +1,8 @@
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Row, RowSchema},
-    AjisaiError, Transform,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -62,7 +62,9 @@ impl ExecuteSQL {
     async fn run_sql(&mut self) -> Result<()> {
         let sql = self.config.sql.clone();
         let pool = self.get_pool().await?;
-        let result = sqlx::query(&sql)
+        // ExecuteSQL is intentionally an explicit user-authored statement;
+        // SQLx's audit wrapper keeps that boundary visible in code review.
+        let result = sqlx::query(sqlx::AssertSqlSafe(sql))
             .execute(pool)
             .await
             .map_err(|e| AjisaiError::Pipeline(format!("ExecuteSQL failed: {}", e)))?;

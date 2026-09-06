@@ -1,8 +1,8 @@
 use ajisai_core::{
+    AjisaiError, Transform,
     context::ExecutionContext,
     error::Result,
     value::{Field, Row, RowSchema, Value, ValueType},
-    AjisaiError, Transform,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -52,7 +52,7 @@ impl StringOp {
                 if chars.len() >= *length {
                     return s.to_owned();
                 }
-                let padding: String = std::iter::repeat(ch).take(length - chars.len()).collect();
+                let padding: String = std::iter::repeat_n(ch, length - chars.len()).collect();
                 format!("{}{}", padding, s)
             }
             StringOp::PadRight { length, pad_char } => {
@@ -61,7 +61,7 @@ impl StringOp {
                 if chars.len() >= *length {
                     return s.to_owned();
                 }
-                let padding: String = std::iter::repeat(ch).take(length - chars.len()).collect();
+                let padding: String = std::iter::repeat_n(ch, length - chars.len()).collect();
                 format!("{}{}", s, padding)
             }
             StringOp::Substring { start, length } => {
@@ -184,10 +184,10 @@ impl Transform for ReplaceInString {
     async fn process(&mut self, row: Row) -> Result<Vec<Row>> {
         let mut values = row.values.clone();
         for rep in &self.config.replacements {
-            if let Some(idx) = row.schema.fields.iter().position(|f| f.name == rep.field) {
-                if let Value::Str(s) = &values[idx] {
-                    values[idx] = Value::Str(s.replace(&rep.search, &rep.replace_with));
-                }
+            if let Some(idx) = row.schema.fields.iter().position(|f| f.name == rep.field)
+                && let Value::Str(s) = &values[idx]
+            {
+                values[idx] = Value::Str(s.replace(&rep.search, &rep.replace_with));
             }
         }
         Ok(vec![Row::new(row.schema.clone(), values)])

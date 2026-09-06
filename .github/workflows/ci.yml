@@ -49,5 +49,29 @@ jobs:
       - name: Build workspace
         run: cargo build --workspace
 
+      - name: Strict Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Unsafe code policy
+        env:
+          RUSTFLAGS: -Dunsafe_code
+        run: cargo check --workspace --all-targets
+
+      - name: Secret scan
+        shell: bash
+        run: bash scripts/secret-scan.sh
+
+      - name: Verify immutable fixtures
+        run: python3 scripts/verify-fixtures.py
+
       - name: Run tests
         run: cargo test --workspace
+
+  dependency-audit:
+    name: Dependency and license audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check
